@@ -66,7 +66,11 @@ kern_coq: $(KERN_CCOMP_SRC)
 # Link kernel
 $(KERN_OBJDIR)/kernel: $(KERN_OBJFILES) $(KERN_BINFILES) $(USER_BINFILES) ./obj/gen/user_procs.inc
 	@echo + ld[KERN] $@
+<<<<<<< HEAD
 	$(V)$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_OBJFILES) $(GCC_LIBS) -b binary $(KERN_BINFILES) $(shell $(USER_BINFILES_INC))
+=======
+	$(V)$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_OBJFILES) $(GCC_LIBS) -b binary $(KERN_BINFILES)
+>>>>>>> eb763a4a (Fix extra .note section in kernel)
 	mv $@ $@.bak
 	$(V)$(OBJCOPY) --remove-section .note.gnu.property $@.bak $@
 	$(V)$(OBJDUMP) -S $@ > $@.asm
