@@ -21,9 +21,18 @@
  * 2. Optimize the code using memoization so that you do not have to
  *    scan the allocation table from scratch every time.
  */
+static unsigned int MEMO_SEARCH = VM_USERLO_PI;
 unsigned int palloc()
 {
     // TODO
+    for(int i = MEMO_SEARCH; i < VM_USERHI_PI; i++) {
+        if(at_is_norm(i) && !at_is_allocated(i)) {
+            // Next time, we only search above this address.
+            MEMO_SEARCH = i + 1;
+            at_set_allocated(i, 1);
+            return i;
+        }
+    }
     return 0;
 }
 
@@ -38,4 +47,10 @@ unsigned int palloc()
 void pfree(unsigned int pfree_index)
 {
     // TODO
+    if(at_is_norm(pfree_index)) {
+        if(pfree_index < MEMO_SEARCH) {
+            MEMO_SEARCH = pfree_index;
+        } 
+        at_set_allocated(pfree_index, 0);
+    }
 }
