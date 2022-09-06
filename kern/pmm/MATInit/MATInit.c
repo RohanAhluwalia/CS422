@@ -22,7 +22,8 @@ void pmem_init(unsigned int mbi_addr)
     unsigned int nps;
 
     // TODO: Define your local variables here.
-
+    unsigned int last_table_entry;
+    unsigned int max_addr;
     // Calls the lower layer initialization primitive.
     // The parameter mbi_addr should not be used in the further code.
     devinit(mbi_addr);
@@ -34,6 +35,10 @@ void pmem_init(unsigned int mbi_addr)
      *       divided by the page size.
      */
     // TODO
+    last_table_entry = get_size() - 1;
+    max_addr = get_mms(last_table_entry) + get_mml(last_table_entry);
+    nps = max_addr/PAGESIZE;
+
 
     set_nps(nps);  // Setting the value computed above to NUM_PAGES.
 
@@ -61,4 +66,52 @@ void pmem_init(unsigned int mbi_addr)
      *    so in that case, you should consider those pages as unavailable.
      */
     // TODO
+
+    // Set Kernel Pages
+    for(unsigned int i = 0; i < VM_USERLO_PI; i++) {
+        at_set_perm(i, 1);
+    }
+
+    for(unsigned int i = VM_USERHI_PI; i < nps; i++) {
+        at_set_perm(i, 1);
+    }
+
+    // We initially consider every user page useable. We'll revise this.
+    for(unsigned int i = VM_USERLO_PI; i < VM_USERHI_PI; i++) {
+        at_set_perm(i, 2);
+    }  
+
+
+    for(int table_entry = 0; table_entry <= last_table_entry; table_entry++) {
+
+        // Get current table information.
+        unsigned int start_addr = get_mms(table_entry);
+        unsigned int end_addr = start_addr + get_mml(table_entry);
+        unsigned int usable = is_usable(table_entry);
+        
+        // We don't care if it's in kernel space.
+        if(end_addr < VM_USERLO || start_addr >= VM_USERHI) {
+            continue;
+        }
+
+
+        // Page start uses the lower bound -- the lowest page divided by PAGE_SIZE it has access to.
+        unsigned int page_start = start_addr/PAGESIZE;
+
+        // Page end uses the upper bound -- the highest page divided by PAGE_SIZE it has access to
+        unsigned int page_end = end_addr/PAGESIZE;
+        if(end_addr % PAGESIZE > 0) {
+            page_end++;
+        }
+
+
+        if(!usable) {
+            for(unsigned int j = page_start; j < page_end; j++) {
+                at_set_perm(j, 0);
+            }
+        }
+        
+    }
+    
+
 }
