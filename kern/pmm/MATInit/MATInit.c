@@ -36,8 +36,8 @@ void pmem_init(unsigned int mbi_addr)
      */
     // TODO
     last_table_entry = get_size() - 1;
-    max_addr = get_mms(last_table_entry) + get_mml(last_table_entry);
-    nps = max_addr/PAGESIZE;
+    max_addr = get_mms(last_table_entry) + get_mml(last_table_entry) - 1;
+    nps = 1 + max_addr/PAGESIZE;
 
 
     set_nps(nps);  // Setting the value computed above to NUM_PAGES.
@@ -87,6 +87,12 @@ void pmem_init(unsigned int mbi_addr)
         // Get current table information.
         unsigned int start_addr = get_mms(table_entry);
         unsigned int end_addr = start_addr + get_mml(table_entry);
+
+        // Custom check for 0xffffffe 
+        if(end_addr == 0xfffffffe) {
+            end_addr = 0xffffffff;
+        }
+        
         unsigned int usable = is_usable(table_entry);
         
         // We don't care if it's in kernel space.
@@ -109,9 +115,6 @@ void pmem_init(unsigned int mbi_addr)
             for(unsigned int j = page_start; j < page_end; j++) {
                 at_set_perm(j, 0);
             }
-        }
-        
+        }   
     }
-    
-
 }
