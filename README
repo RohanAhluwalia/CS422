@@ -13,8 +13,8 @@ Edward Frazer & Rohan Ahluwalia
 
 1: The processor starts executing 32-bit code at switch_prot. The instructions movl "%eax, %cr0" sets the 
 protection enabled bit in control register 0. The instruction ljmp $PROT_MODE_CSEG, $protcseg then jumps to a 32 bit code segment.
-2: The last instruction is at jmp*%edx in the exec_kernel routine. The first instruction of the kernel when loaded is sub $0x18, %esp.
-3: The first instruction of the kernel logic occurs in the pmem_init function. The specific address (sourced from kernel.asm) is at 0x1023a0.
+2: The last instruction is at jmp*%edx in the exec_kernel routine. The first instruction of the kernel is cli, which is called at the start of the kernel. 
+3: The first instruction of the kernel logic occurs in the start function, which is at address 0x1023f0.
 4: The boot loader decides how many sectors it must read using metadata from the ELF program header (kernel info from sector 0) which specifies e_phnum, 
     which is the number of sectors that the bootloader must process to fetch the entire kernel from disk as well as the sizes of those sections. 
 
