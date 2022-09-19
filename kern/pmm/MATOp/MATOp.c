@@ -47,10 +47,9 @@ unsigned int palloc()
 void pfree(unsigned int pfree_index)
 {
     // TODO
-    if(at_is_norm(pfree_index)) {
-        if(pfree_index < MEMO_SEARCH) {
-            MEMO_SEARCH = pfree_index;
-        } 
-        at_set_allocated(pfree_index, 0);
-    }
+    if(pfree_index < MEMO_SEARCH) {
+        MEMO_SEARCH = pfree_index;
+    } 
+    at_set_allocated(pfree_index, 0);
+
 }
