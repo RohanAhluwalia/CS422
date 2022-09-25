@@ -23,4 +23,4 @@ protection enabled bit in control register 0. The instruction ljmp $PROT_MODE_CS
 1. Added basic utility functions for memory paging in MATIntro.c 
 2. Set permissions for memory pages based on kernel/bios reserves in MATInit.c
 3. Implemented alloc/free for pages in MATOp.c
-4: Worked around bugged get_mml function by adding a custom handler for broken address.
+4. Worked around bugged get_mml function by adding a custom handler for broken address.
