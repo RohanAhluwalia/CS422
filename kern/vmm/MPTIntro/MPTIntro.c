@@ -20,7 +20,7 @@ PAGE_ENTRY set_nth_bit (PAGE_ENTRY number, unsigned int n, bool value) {
         return (unsigned int)number | ((unsigned int)(1) << n);
     }
     if(value == 0) {
-        return (unsigned int)number | ~((unsigned int)(1) << n);
+        return (unsigned int)number & ~((unsigned int)(1) << n);
     }
 }
 
@@ -32,19 +32,28 @@ PAGE_ENTRY set_pwu_bits(PAGE_ENTRY entry, bool present_value, bool write_value, 
     return entry;
 }
 
-PAGE_ENTRY void_n_bits(PAGE_ENTRY entry, int n) {
 
-    for(int i = 0; i < n; i++) {
+PAGE_ENTRY void_n_bits(PAGE_ENTRY entry, int n, int start) {
+    unsigned int og = entry;
+    //dprintf("Voiding Entry %d\n", entry);
+
+    for(int i = start; i < n; i++) {
         entry = set_nth_bit(entry, i, 0);
     }
+    //dprintf("Voided Entry  %d\n", entry);
     return entry;
 }
+
 
 PAGE_ENTRY get_pt_entry_mem_location(PAGE_ENTRY pdir_entry, PAGE_ENTRY pte_index) {
     // Assumption is that the table addresses are laid out linearly from the address entry. If
     // we dereference this pointer, we should be at the correct location?
     dprintf("Memory Location: %d : %d\n", pdir_entry, pte_index);
-    return (unsigned int)void_n_bits(pdir_entry, 12) + (unsigned int)(pte_index);
+    return (unsigned int)void_n_bits(pdir_entry, 12, 0) + (unsigned int)(pte_index);
+}
+
+unsigned int construct_pa_from_indices(unsigned int pde_index, unsigned int pte_index) {
+    return (pde_index*PAGESIZE) << 22 | (pte_index*PAGESIZE) << 12;
 }
 /**
  * Page directory pool for NUM_IDS processes.
@@ -149,7 +158,7 @@ void set_ptbl_entry_identity(unsigned int pde_index, unsigned int pte_index,
                              unsigned int perm)
 {
     // TODO
-    IDPTbl[pde_index][pte_index] = (PAGE_ENTRY)((pte_index*PAGESIZE) | perm);
+    IDPTbl[pde_index][pte_index] = (PAGE_ENTRY)(construct_pa_from_indices(pde_index, pte_index) | perm);
 }
 
 // Sets the specified page table entry to 0.
