@@ -2,11 +2,25 @@
 
 #include "import.h"
 
-#define VM_USERLO 0X40000000
-#define VM_USERHI 0xF0000000
-#define VM_USERLO_PI (VM_USERLO / PAGESIZE)
-#define VM_USERHI_PI (VM_USERHI / PAGESIZE)
 
+void memorymap_process(int pid) {
+    for(int i = 0; i < 1024; i++) {
+        for(int j = 0; j < 1024; j++) {
+            unsigned int pa = construct_pa_from_indices(i, j);
+            unsigned int perm = set_pwu_bits(0, 1, 1, 1);
+            if(pa < VM_USERLO_PI || pa >= VM_USERHI_PI) {
+                set_ptbl_entry(pid, i, j, pa, perm)
+                perm = (unsigned int)set_pwu_bits(perm, 1, 1, 1);
+            }
+        }
+    }
+}
+
+void clear_ptbl(unsigned int proc_index, unsigned int pde_index) {
+    for(int i = 0; i < 1024; i++) {
+        rmv_ptbl_entry(proc_index, pde_index);
+    }
+}
 /**
  * For each process from id 0 to NUM_IDS - 1,
  * set up the page directory entries so that the kernel portion of the map is
@@ -14,8 +28,9 @@
  */
 void pdir_init(unsigned int mbi_addr)
 {
-    // TODO: Define your local variables here
+    // TODO: Define your local variables here.
 
+<<<<<<< HEAD
   idptbl_init(mbi_addr);
   for (unsigned int i=0;i<NUM_IDS;i++){
 
@@ -30,6 +45,13 @@ void pdir_init(unsigned int mbi_addr)
 
 
   }
+=======
+    idptbl_init(mbi_addr);
+    for(int i = 0; i < NUM_IDS) {
+        memorymap_process(i);
+    }
+    // TODO
+>>>>>>> parent of 7316847c (kern/comm)
 }
 
 /**
@@ -41,6 +63,7 @@ void pdir_init(unsigned int mbi_addr)
  */
 unsigned int alloc_ptbl(unsigned int proc_index, unsigned int vaddr)
 {
+<<<<<<< HEAD
     unsigned int page_index=container_alloc(proc_index);
     if (!page_index) return 0;
 
@@ -52,6 +75,19 @@ unsigned int alloc_ptbl(unsigned int proc_index, unsigned int vaddr)
         *tmp=0x00000000;
     }
     return page_index;
+=======
+    // TODO
+    PAGE_ENTRY directory_index = get_directory_index(vaddr);
+    PAGE_ENTRY page_index = get_page_index(vaddr);
+    unsigned int new_page = container_alloc(proc_index);
+    if(new_page == 0) 
+    {
+        return 0;
+    }
+
+
+    return 0;
+>>>>>>> parent of 7316847c (kern/comm)
 }
 
 // Reverse operation of alloc_ptbl.
@@ -59,13 +95,5 @@ unsigned int alloc_ptbl(unsigned int proc_index, unsigned int vaddr)
 // and frees the page for the page table entries (with container_free).
 void free_ptbl(unsigned int proc_index, unsigned int vaddr)
 {
-    unsigned int pdir_entry;
-    unsigned int page_index;
-
-    pdir_entry = get_pdir_entry_by_va(proc_index, vaddr);
-    page_index = pdir_entry >> 12;
-
-    rmv_pdir_entry_by_va(proc_index,vaddr);
-
-    container_free(proc_index, page_index);
+    // TODO
 }
