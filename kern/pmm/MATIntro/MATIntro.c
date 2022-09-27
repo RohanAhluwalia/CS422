@@ -48,10 +48,6 @@ void set_nps(unsigned int nps)
  */
 unsigned int at_is_norm(unsigned int page_index)
 {
-<<<<<<< HEAD
-    // TODO
-    return AT[page_index].perm > 1;
-=======
     unsigned int perm;
 
     perm = AT[page_index].perm;
@@ -62,7 +58,6 @@ unsigned int at_is_norm(unsigned int page_index)
     }
 
     return perm;
->>>>>>> release/lab1-solution
 }
 
 /**
@@ -72,10 +67,6 @@ unsigned int at_is_norm(unsigned int page_index)
  */
 void at_set_perm(unsigned int page_index, unsigned int perm)
 {
-<<<<<<< HEAD
-    // TODO
-=======
->>>>>>> release/lab1-solution
     AT[page_index].perm = perm;
     AT[page_index].allocated = 0;
 }
@@ -86,10 +77,6 @@ void at_set_perm(unsigned int page_index, unsigned int perm)
  */
 unsigned int at_is_allocated(unsigned int page_index)
 {
-<<<<<<< HEAD
-    // TODO
-    return AT[page_index].allocated > 0;
-=======
     unsigned int allocated;
 
     allocated = AT[page_index].allocated;
@@ -98,7 +85,6 @@ unsigned int at_is_allocated(unsigned int page_index)
     }
 
     return allocated;
->>>>>>> release/lab1-solution
 }
 
 /**
@@ -107,9 +93,5 @@ unsigned int at_is_allocated(unsigned int page_index)
  */
 void at_set_allocated(unsigned int page_index, unsigned int allocated)
 {
-<<<<<<< HEAD
-    // TODO
-=======
->>>>>>> release/lab1-solution
     AT[page_index].allocated = allocated;
 }
