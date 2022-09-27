@@ -35,6 +35,7 @@ unsigned int get_page_index(unsigned int vaddr) {
 unsigned int get_ptbl_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 {
     
+    
     //PAGE_ENTRY offset = void_n_bits(vaddr, 20, 12);
 
     // Use the page section of the vaddr to obtain 
@@ -110,19 +111,36 @@ void idptbl_init(unsigned int mbi_addr)
 {
     // TODO: Define your local variables here.
 
+    // TODO: Define your local variables here.
+
     container_init(mbi_addr);
 
-    for(int i = 0; i < 1024; i++) {
-        for(int j = 0; j < 1024; j++) {
-            unsigned int pa = construct_pa_from_indices(i, j);
-            unsigned int perm = 0;
-            if(pa < VM_USERLO_PI || pa >= VM_USERHI_PI) {
-                perm = (unsigned int)set_pwu_bits(perm, 1, 1, 1);
-            }
-            else {
-                perm = (unsigned int)set_pwu_bits(perm, 1, 1, 0);
-            }
-            set_ptbl_entry_identity(i, j, perm);
-        }
+    // TODO
+    unsigned int vaddr = 0;
+    unsigned int pde_index, pte_index, perm;
+    set_pdir_base(0);
+    for(int pde_index = 0; pde_index < 1024; pde_index++){
+      for(int pte_index = 0; pte_index < 1024; pte_index++){
+          vaddr = ((pde_index<<10)+pte_index)<<12;
+          if(vaddr>=VM_USERLO && vaddr <VM_USERHI)perm = PTE_P|PTE_W;
+          else perm = PTE_P|PTE_W|PTE_G;
+          set_ptbl_entry_identity(pde_index, pte_index, perm);
+      }
     }
+    
+    // container_init(mbi_addr);
+
+    // for(int i = 0; i < 1024; i++) {
+    //     for(int j = 0; j < 1024; j++) {
+    //         unsigned int pa = construct_pa_from_indices(i, j);
+    //         unsigned int perm = 0;
+    //         if(pa < VM_USERLO_PI || pa >= VM_USERHI_PI) {
+    //             perm = (unsigned int)set_pwu_bits(perm, 1, 1, 1);
+    //         }
+    //         else {
+    //             perm = (unsigned int)set_pwu_bits(perm, 1, 1, 0);
+    //         }
+    //         set_ptbl_entry_identity(i, j, perm);
+    //     }
+    // }
 }

@@ -2,26 +2,10 @@
 
 #include "import.h"
 
-
-// void memorymap_process(int pid) {
-//     for(int i = 0; i < 1024; i++) {
-//         for(int j = 0; j < 1024; j++) {
-//             unsigned int pa = construct_pa_from_indices(i, j);
-//             unsigned int perm = set_pwu_bits(0, 1, 1, 1);
-//             if(pa < VM_USERLO_PI || pa >= VM_USERHI_PI) {
-//                 set_ptbl_entry(pid, i, j, pa, perm)
-//                 perm = (unsigned int)set_pwu_bits(perm, 1, 1, 1);
-//             }
-//         }
-//     }
-// }
-
-// void clear_ptbl(unsigned int proc_index, unsigned int pde_index) {
-//     for(int i = 0; i < 1024; i++) {
-//         rmv_ptbl_entry(proc_index, pde_index);
-//     }
-// }
-
+#define VM_USERLO 0X40000000
+#define VM_USERHI 0xF0000000
+#define VM_USERLO_PI (VM_USERLO / PAGESIZE)
+#define VM_USERHI_PI (VM_USERHI / PAGESIZE)
 
 /**
  * For each process from id 0 to NUM_IDS - 1,
@@ -32,11 +16,20 @@ void pdir_init(unsigned int mbi_addr)
 {
     // TODO: Define your local variables here
 
-    idptbl_init(mbi_addr);
-    // for(int i = 0; i < NUM_IDS) {
-    //     // memorymap_process(i);
-    // }
-    // TODO
+  idptbl_init(mbi_addr);
+  for (unsigned int i=0;i<NUM_IDS;i++){
+
+    for (unsigned int j=0;j<VM_USERLO_PI>>10;j++)
+      set_pdir_entry_identity(i,j);
+    for (unsigned int j=VM_USERHI_PI>>10;j<1024;j++)
+      set_pdir_entry_identity(i,j);
+
+    //the rest unmapped
+      for (unsigned int j=VM_USERLO_PI>>10;j<VM_USERHI_PI>>10;j++)
+        rmv_pdir_entry(i,j);
+
+
+  }
 }
 
 /**
@@ -48,22 +41,17 @@ void pdir_init(unsigned int mbi_addr)
  */
 unsigned int alloc_ptbl(unsigned int proc_index, unsigned int vaddr)
 {
-    // TODO
-    // PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    unsigned int new_page = container_alloc(proc_index);
-    if(new_page == 0) 
-    {
-        return 0;
+    unsigned int page_index=container_alloc(proc_index);
+    if (!page_index) return 0;
+
+    set_pdir_entry_by_va(proc_index,vaddr,page_index);
+
+    for (unsigned int i=page_index<<12;i<(page_index+1)<<12;i++){
+        unsigned int *tmp;
+        tmp= (unsigned int*) i;
+        *tmp=0x00000000;
     }
-
-    set_pdir_entry_by_va(proc_index, vaddr, new_page);
-
-    unsigned int addr;
-    for(addr = new_page << 12; addr < (new_page + 1) << 12; addr += 4){
-        *(unsigned int *)addr &= 0x00000000;
-    }
-
-    return new_page;
+    return page_index;
 }
 
 // Reverse operation of alloc_ptbl.

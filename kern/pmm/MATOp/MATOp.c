@@ -1,4 +1,5 @@
 #include <lib/debug.h>
+#include <lib/types.h>
 #include "import.h"
 
 #define PAGESIZE     4096
@@ -6,6 +7,8 @@
 #define VM_USERHI    0xF0000000
 #define VM_USERLO_PI (VM_USERLO / PAGESIZE)
 #define VM_USERHI_PI (VM_USERHI / PAGESIZE)
+
+static unsigned int last_palloc_index = VM_USERLO_PI;
 
 /**
  * Allocate a physical page.
@@ -24,16 +27,36 @@
 static unsigned int MEMO_SEARCH = VM_USERLO_PI;
 unsigned int palloc()
 {
-    // TODO
-    for(int i = MEMO_SEARCH; i < VM_USERHI_PI; i++) {
-        if(at_is_norm(i) && !at_is_allocated(i)) {
-            // Next time, we only search above this address.
-            MEMO_SEARCH = i + 1;
-            at_set_allocated(i, 1);
-            return i;
+    unsigned int nps;
+    unsigned int palloc_index;
+    unsigned int palloc_free_index;
+    bool first;
+
+    nps = get_nps();
+    palloc_index = last_palloc_index;
+    palloc_free_index = nps;
+    first = TRUE;
+
+    while ((palloc_index != last_palloc_index || first) && palloc_free_index == nps) {
+        first = FALSE;
+        if (at_is_norm(palloc_index) && !at_is_allocated(palloc_index)) {
+            palloc_free_index = palloc_index;
+        }
+        palloc_index++;
+        if (palloc_index >= VM_USERHI_PI) {
+            palloc_index = VM_USERLO_PI;
         }
     }
-    return 0;
+
+    if (palloc_free_index == nps) {
+        palloc_free_index = 0;
+        last_palloc_index = VM_USERLO_PI;
+    } else {
+        at_set_allocated(palloc_free_index, 1);
+        last_palloc_index = palloc_free_index;
+    }
+
+    return palloc_free_index;
 }
 
 /**
@@ -46,10 +69,5 @@ unsigned int palloc()
  */
 void pfree(unsigned int pfree_index)
 {
-    // TODO
-    if(pfree_index < MEMO_SEARCH) {
-        MEMO_SEARCH = pfree_index;
-    } 
     at_set_allocated(pfree_index, 0);
-
 }

@@ -1,4 +1,5 @@
 #include <lib/debug.h>
+#include <lib/types.h>
 #include "import.h"
 
 #define PAGESIZE     4096
@@ -20,10 +21,9 @@
 void pmem_init(unsigned int mbi_addr)
 {
     unsigned int nps;
+    unsigned int pg_idx, pmmap_size, cur_addr, highest_addr;
+    unsigned int entry_idx, flag, isnorm, start, len;
 
-    // TODO: Define your local variables here.
-    unsigned int last_table_entry;
-    unsigned int max_addr;
     // Calls the lower layer initialization primitive.
     // The parameter mbi_addr should not be used in the further code.
     devinit(mbi_addr);
@@ -34,12 +34,18 @@ void pmem_init(unsigned int mbi_addr)
      * Hint: Think of it as the highest address in the ranges of the memory map table,
      *       divided by the page size.
      */
-    // TODO
-    last_table_entry = get_size() - 1;
-    max_addr = get_mms(last_table_entry) + get_mml(last_table_entry) - 1;
-    nps = 1 + max_addr/PAGESIZE;
+    nps = 0;
+    entry_idx = 0;
+    pmmap_size = get_size();
+    while (entry_idx < pmmap_size) {
+        cur_addr = get_mms(entry_idx) + get_mml(entry_idx);
+        if (nps < cur_addr) {
+            nps = cur_addr;
+        }
+        entry_idx++;
+    }
 
-
+    nps = ROUNDDOWN(nps, PAGESIZE) / PAGESIZE;
     set_nps(nps);  // Setting the value computed above to NUM_PAGES.
 
     /**
@@ -65,56 +71,30 @@ void pmem_init(unsigned int mbi_addr)
      *    the addresses are in a usable range. Currently, we do not utilize partial pages,
      *    so in that case, you should consider those pages as unavailable.
      */
-    // TODO
-
-    // Set Kernel Pages
-    for(unsigned int i = 0; i < VM_USERLO_PI; i++) {
-        at_set_perm(i, 1);
-    }
-
-    for(unsigned int i = VM_USERHI_PI; i < nps; i++) {
-        at_set_perm(i, 1);
-    }
-
-    // We initially consider every user page useable. We'll revise this.
-    for(unsigned int i = VM_USERLO_PI; i < VM_USERHI_PI; i++) {
-        at_set_perm(i, 2);
-    }  
-
-
-    for(int table_entry = 0; table_entry <= last_table_entry; table_entry++) {
-
-        // Get current table information.
-        unsigned int start_addr = get_mms(table_entry);
-        unsigned int end_addr = start_addr + get_mml(table_entry);
-
-        // Custom check for 0xffffffe 
-        if(end_addr == 0xfffffffe) {
-            end_addr = 0xffffffff;
-        }
-        
-        unsigned int usable = is_usable(table_entry);
-        
-        // We don't care if it's in kernel space.
-        if(end_addr < VM_USERLO || start_addr >= VM_USERHI) {
-            continue;
-        }
-
-
-        // Page start uses the lower bound -- the lowest page divided by PAGE_SIZE it has access to.
-        unsigned int page_start = start_addr/PAGESIZE;
-
-        // Page end uses the upper bound -- the highest page divided by PAGE_SIZE it has access to
-        unsigned int page_end = end_addr/PAGESIZE;
-        if(end_addr % PAGESIZE > 0) {
-            page_end++;
-        }
-
-
-        if(!usable) {
-            for(unsigned int j = page_start; j < page_end; j++) {
-                at_set_perm(j, 0);
+    pg_idx = 0;
+    while (pg_idx < nps) {
+        if (pg_idx < VM_USERLO_PI || VM_USERHI_PI <= pg_idx) {
+            at_set_perm(pg_idx, 1);
+        } else {
+            entry_idx = 0;
+            flag = 0;
+            isnorm = 0;
+            while (entry_idx < pmmap_size && !flag) {
+                isnorm = is_usable(entry_idx);
+                start = get_mms(entry_idx);
+                len = get_mml(entry_idx);
+                if (start <= pg_idx * PAGESIZE && (pg_idx + 1) * PAGESIZE <= start + len) {
+                    flag = 1;
+                }
+                entry_idx++;
             }
-        }   
+
+            if (flag && isnorm) {
+                at_set_perm(pg_idx, 2);
+            } else {
+                at_set_perm(pg_idx, 0);
+            }
+        }
+        pg_idx++;
     }
 }
