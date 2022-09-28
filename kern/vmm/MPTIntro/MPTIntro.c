@@ -7,55 +7,16 @@
 #define PT_PERM_UP  0
 #define PT_PERM_PTU (PTE_P | PTE_W | PTE_U)
 
-typedef unsigned int* PAGE_ENTRY;
 
-
-/** 
- * Helper function to set the nth bit of a given page entry. 
- * n - the 0-indexed bit to set.
- * value - the binary value (0 or 1) to assign to the given place.
-*/
-PAGE_ENTRY set_nth_bit (PAGE_ENTRY number, unsigned int n, bool value) {
-
-    if(value == 1) {
-        return (unsigned int)number | ((unsigned int)(1) << n);
-    }
-    if(value == 0) {
-        return (unsigned int)number & ~((unsigned int)(1) << n);
-    }
+unsigned int getPageTableAddr(unsigned int page_index){
+    return (page_index << 12); //shift right 12 bits
 }
 
-PAGE_ENTRY set_pwu_bits(PAGE_ENTRY entry, bool present_value, bool write_value, bool user_value) {
-    // dprintf('Setting PWU bits For: %d\n', entry);
-    entry = set_nth_bit(entry, 0, present_value);
-    entry = set_nth_bit(entry, 1, write_value);
-    entry = set_nth_bit(entry, 2, user_value);
-    return entry;
+unsigned int removePERMBits(unsigned int addr){
+    addr &= 0xfffff000;
+    return addr;
 }
 
-
-PAGE_ENTRY void_n_bits(PAGE_ENTRY entry, int n, int start) {
-    unsigned int og = entry;
-    //dprintf("Voiding Entry %d\n", entry);
-
-    for(int i = start; i < n; i++) {
-        entry = set_nth_bit(entry, i, 0);
-    }
-    //dprintf("Voided Entry  %d\n", entry);
-    return entry;
-}
-
-
-PAGE_ENTRY get_pt_entry_mem_location(PAGE_ENTRY pdir_entry, PAGE_ENTRY pte_index) {
-    // Assumption is that the table addresses are laid out linearly from the address entry. If
-    // we dereference this pointer, we should be at the correct location?
-    // dprintf("Memory Location: %d : %d\n", pdir_entry, pte_index);
-    return (unsigned int)void_n_bits(pdir_entry, 12, 0) + (unsigned int)(pte_index);
-}
-
-unsigned int construct_pa_from_indices(unsigned int pde_index, unsigned int pte_index) {
-    return (pde_index*PAGESIZE) << 22 | (pte_index*PAGESIZE) << 12;
-}
 /**
  * Page directory pool for NUM_IDS processes.
  * mCertiKOS maintains one page structure for each process.
@@ -101,11 +62,13 @@ unsigned int get_pdir_entry(unsigned int proc_index, unsigned int pde_index)
 // You should also set the permissions PTE_P, PTE_W, and PTE_U.
 void set_pdir_entry(unsigned int proc_index, unsigned int pde_index,
                     unsigned int page_index)
-{
-    // TODO
-    unsigned int real_address = (page_index << 12)|PT_PERM_PTU; //to let the lower 12 bits available
-    PDirPool[proc_index][pde_index]=(unsigned int*) real_address;
-    // PDirPool[proc_index][pde_index] = set_pwu_bits(page_index*PAGESIZE, 1, 1, 1);
+{   
+
+    // Figure out start addr of page index
+    unsigned int startAddr = getPageTableAddr(page_index);
+    startAddr |= PT_PERM_PTU;  // add all of the permissions
+
+    PDirPool[proc_index][pde_index]=(unsigned int*) startAddr;
 }
 
 // Sets the page directory entry # [pde_index] for the process # [proc_index]
@@ -114,20 +77,14 @@ void set_pdir_entry(unsigned int proc_index, unsigned int pde_index,
 // This will be used to map a page directory entry to an identity page table.
 void set_pdir_entry_identity(unsigned int proc_index, unsigned int pde_index)
 {
-    unsigned int real_address = ((unsigned int) IDPTbl[pde_index])|PT_PERM_PTU;
-    PDirPool[proc_index][pde_index]=(unsigned int*) real_address;
-    // // TODO
-    // PDirPool[proc_index][pde_index] = set_pwu_bits(IDPTbl[pde_index], 1, 1, 1);
-    // //dprintf("%d : %d : %d\n", pde_index, PDirPool[proc_index][pde_index], IDPTbl[pde_index]);
-    // //dprintf("Sizeofs: %d : %d\n", sizeof(PAGE_ENTRY), sizeof(unsigned int));
-
+    unsigned int addr = (unsigned int) IDPTbl[pde_index] | PT_PERM_PTU; 
+    PDirPool[proc_index][pde_index]=(unsigned int*) addr;
 }
 
 // Removes the specified page directory entry (sets the page directory entry to 0).
 // Don't forget to cast the value to (unsigned int *).
 void rmv_pdir_entry(unsigned int proc_index, unsigned int pde_index)
 {
-    // TODO
     PDirPool[proc_index][pde_index]=(unsigned int*)0x00000000;
 }
 
@@ -136,21 +93,14 @@ void rmv_pdir_entry(unsigned int proc_index, unsigned int pde_index)
 unsigned int get_ptbl_entry(unsigned int proc_index, unsigned int pde_index,
                             unsigned int pte_index)
 {
-    // TODO
-    unsigned int base_address = (unsigned int) PDirPool[proc_index][pde_index];
-    base_address&=0xfffff000; //remove lower 12 bits
-    unsigned int *res;
-    res = (unsigned int *) (base_address + (pte_index<<2)); // each entry is 4 bytes;
-    return *res;
 
-    // // TODO
+    unsigned int addr = (unsigned int) PDirPool[proc_index][pde_index]; //gets us the base address
 
-    // // This gives us the address in heap memory of the desired page table. 
-    // PAGE_ENTRY pdir_entry = (PAGE_ENTRY)get_pdir_entry(proc_index, pde_index);
+    //need to remove the permision bits 
+    addr = removePERMBits(addr);
+    addr += pte_index << 2;
 
-    // // Assumption is that the table addresses are laid out linearly from the address entry. If
-    // // we dereference this pointer, we should be at the correct location?
-    // return *(get_pt_entry_mem_location(pdir_entry, pte_index));
+    return *(unsigned int *)addr;
 }
 
 // Sets the specified page table entry with the start address of physical page # [page_index]
@@ -159,18 +109,18 @@ void set_ptbl_entry(unsigned int proc_index, unsigned int pde_index,
                     unsigned int pte_index, unsigned int page_index,
                     unsigned int perm)
 {
-    // TODO
-    // Sets the specified page table entry!!! use pointers
-    unsigned int base_address =  (unsigned int)PDirPool[proc_index][pde_index];
-    base_address&=0xfffff000;
-    base_address+=pte_index<<2;
 
-    unsigned int* target;
-    target = (unsigned int *)base_address;//set pointer to address
-    *target=(page_index<<12)|perm;
-    // TODO: Check 
-    // PAGE_ENTRY pdir_entry = (PAGE_ENTRY)get_pdir_entry(proc_index, pde_index);
-    // *(get_pt_entry_mem_location(pdir_entry, pte_index)) = (PAGE_ENTRY)((page_index * PAGESIZE) | perm);
+    // finds the addresss of the start of the physical page
+    unsigned int addr =  (unsigned int)PDirPool[proc_index][pde_index];
+
+    //remove permission bits
+    addr = removePERMBits(addr);
+    addr += pte_index<<2;
+
+    unsigned int pte_addr = getPageTableAddr(page_index);
+
+    unsigned int *pte = (unsigned int *)addr;
+    *pte = pte_addr | perm;
 }
 
 // Sets up the specified page table entry in IDPTbl as the identity map.
@@ -178,25 +128,17 @@ void set_ptbl_entry(unsigned int proc_index, unsigned int pde_index,
 void set_ptbl_entry_identity(unsigned int pde_index, unsigned int pte_index,
                              unsigned int perm)
 {
-    // TODO
     IDPTbl[pde_index][pte_index]=((pde_index<<10)+pte_index)<<12;
-    IDPTbl[pde_index][pte_index] |= perm;
-    // IDPTbl[pde_index][pte_index] = (PAGE_ENTRY)(construct_pa_from_indices(pde_index, pte_index) | perm);
+    IDPTbl[pde_index][pte_index]|=perm;
 }
 
 // Sets the specified page table entry to 0.
 void rmv_ptbl_entry(unsigned int proc_index, unsigned int pde_index,
                     unsigned int pte_index)
 {
-    // TODO
-    unsigned int target = (unsigned int)PDirPool[proc_index][pde_index];
-    target&=0xfffff000;
-    target+=pte_index<<2;
+    unsigned int addr = (unsigned int)PDirPool[proc_index][pde_index];
+    addr = removePERMBits(addr);
+    addr += pte_index << 2; 
 
-    unsigned int *t=(unsigned int*) target;
-    *t=0x00000000;
-
-    // // TODO
-    // PAGE_ENTRY pdir_entry = get_pdir_entry(proc_index, pde_index);
-    // *(get_pt_entry_mem_location(pdir_entry, pte_index)) = (PAGE_ENTRY)0;
+    *((unsigned int *) addr) = 0; 
 }

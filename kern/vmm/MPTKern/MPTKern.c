@@ -3,17 +3,23 @@
 
 #include "import.h"
 
+#define VM_USERLO    0x40000000
+#define VM_USERHI    0xF0000000
+#define VM_USERLO_PI (VM_USERLO / PAGESIZE)
+#define VM_USERHI_PI (VM_USERHI / PAGESIZE)
+
 /**
  * Sets the entire page map for process 0 as the identity map.
  * Note that part of the task is already completed by pdir_init.
  */
 void pdir_init_kern(unsigned int mbi_addr)
 {
-    // TODO: Define your local variables here.
-
     pdir_init(mbi_addr);
 
-    //TODO
+    unsigned int pde_index = 0;
+    for (; pde_index < 1024; pde_index++) {
+        set_pdir_entry_identity(0, pde_index);
+    }
 }
 
 /**
@@ -27,8 +33,19 @@ void pdir_init_kern(unsigned int mbi_addr)
 unsigned int map_page(unsigned int proc_index, unsigned int vaddr,
                       unsigned int page_index, unsigned int perm)
 {
-    // TODO
-    return 0;
+
+    unsigned int ptbl;
+    unsigned int pdir_entry = get_pdir_entry_by_va(proc_index, vaddr);
+    if (pdir_entry == 0){
+        ptbl = alloc_ptbl(proc_index, vaddr);
+        
+        //check if no avaliable physical pages
+        if(ptbl == 0) return MagicNumber;
+    }
+
+    set_ptbl_entry_by_va(proc_index, vaddr, page_index, perm);
+    
+    return get_pdir_entry_by_va(proc_index, vaddr) >> 12;
 }
 
 /**
@@ -41,6 +58,11 @@ unsigned int map_page(unsigned int proc_index, unsigned int vaddr,
  */
 unsigned int unmap_page(unsigned int proc_index, unsigned int vaddr)
 {
-    // TODO
-    return 0;
+    // Do we need to check a perm here 
+    unsigned int ptbl = get_ptbl_entry_by_va(proc_index, vaddr);
+    if (ptbl != 0){
+        rmv_ptbl_entry_by_va(proc_index, vaddr);
+    }
+
+    return ptbl;
 }

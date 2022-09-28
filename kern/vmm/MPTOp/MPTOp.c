@@ -7,24 +7,11 @@
 #define VM_USERLO_PI (VM_USERLO / PAGESIZE)
 #define VM_USERHI_PI (VM_USERHI / PAGESIZE)
 
-typedef unsigned int* PAGE_ENTRY;
-
-bool read_bit(unsigned int number, int n) {
-    return number & ((unsigned int)1 << n);
-}
-
-unsigned int get_directory_index(unsigned int vaddr) {
-    //dprintf("Vaddr, Dir Index | %d : %d\n", vaddr, ((unsigned int)void_n_bits(vaddr, 22, 0)));
-    return void_n_bits(vaddr, 22, 0);
-}
-
+/**
+ * Helper function that determines the page index from virtual memory
+ */
 unsigned int get_page_index(unsigned int vaddr) {
-    unsigned int dir = void_n_bits(vaddr, 22, 0);
-    // We remove the offset from both. Further, we xor the page + dir with dir so that we're left with the
-    // middle page bits. We must shift those 12 to the left to make up for the loss of dir and ensure the page 
-    // is placed in front.
-    //dprintf("Vaddr, Page Addr | %d : %d\n", vaddr, ((unsigned int)void_n_bits(vaddr, 12, 0) ^ dir));
-    return ((unsigned int)void_n_bits(vaddr, 12, 0) ^ dir);
+    return (vaddr / PAGESIZE) % 1024; //divide by the pagesize then find the correct page
 }
 
 /**
@@ -35,50 +22,43 @@ unsigned int get_page_index(unsigned int vaddr) {
 unsigned int get_ptbl_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 {
     
-    
-    //PAGE_ENTRY offset = void_n_bits(vaddr, 20, 12);
+    unsigned int pde_index;
+    unsigned int page_index;
+    unsigned int ptbl_entry;
 
-    // Use the page section of the vaddr to obtain 
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    PAGE_ENTRY page_index = get_page_index(vaddr);
-    if(read_bit(get_pdir_entry(proc_index, directory_index), 0) == 0) { 
-        return 0;
-    }
 
-    PAGE_ENTRY ptable_entry = get_ptbl_entry(proc_index, directory_index, page_index);
+    pde_index = vaddr >> 22; // (4096 * 1024)
 
-    if(read_bit(ptable_entry, 0) == 0) {
-        return 0;
-    }
+    unsigned int pde = get_pdir_entry(proc_index, pde_index);
+    if (pde == 0) return 0;
 
-    return ptable_entry;
+    page_index = get_page_index(vaddr); // find the start of the page table entry
 
+    ptbl_entry = get_ptbl_entry(proc_index, pde_index, page_index);
+    return ptbl_entry;
 }
 
 // Returns the page directory entry corresponding to the given virtual address.
 unsigned int get_pdir_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 {
-    // TODO
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    return get_pdir_entry(proc_index, directory_index);
+    unsigned int pde_index = vaddr >> 22;
+    return get_pdir_entry(proc_index,pde_index);
 }
 
 // Removes the page table entry for the given virtual address.
 void rmv_ptbl_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 {
-    // TODO
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    PAGE_ENTRY page_index = get_page_index(vaddr);
-
-    rmv_ptbl_entry(proc_index, directory_index, page_index);
+    unsigned int pde_index = vaddr >> 22;
+    unsigned int page_index = get_page_index(vaddr); 
+    rmv_ptbl_entry(proc_index, pde_index, page_index);
 }
 
 // Removes the page directory entry for the given virtual address.
 void rmv_pdir_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 {
     // TODO
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    rmv_pdir_entry(proc_index, directory_index);
+    unsigned int pde_index = vaddr >> 22;
+    rmv_pdir_entry(proc_index, pde_index);
     
 }
 
@@ -87,11 +67,10 @@ void rmv_pdir_entry_by_va(unsigned int proc_index, unsigned int vaddr)
 void set_ptbl_entry_by_va(unsigned int proc_index, unsigned int vaddr,
                           unsigned int page_index, unsigned int perm)
 {
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    PAGE_ENTRY pte_index = get_page_index(vaddr);
+    unsigned int pde_index = vaddr >> 22;
+    unsigned int pte_index = get_page_index(vaddr);
 
-    set_ptbl_entry(proc_index, directory_index,
-                    pte_index, page_index, perm);
+    set_ptbl_entry(proc_index, pde_index, pte_index, page_index, perm);
 }
 
 
@@ -99,9 +78,8 @@ void set_ptbl_entry_by_va(unsigned int proc_index, unsigned int vaddr,
 void set_pdir_entry_by_va(unsigned int proc_index, unsigned int vaddr,
                           unsigned int page_index)
 {
-    // TODO
-    PAGE_ENTRY directory_index = get_directory_index(vaddr);
-    set_pdir_entry(proc_index, directory_index, page_index);
+    unsigned int pde_index = vaddr >> 22;
+    set_pdir_entry(proc_index, pde_index, page_index);
 }
 
 // Initializes the identity page table.
@@ -109,38 +87,20 @@ void set_pdir_entry_by_va(unsigned int proc_index, unsigned int vaddr,
 // While the permission for the rest should be PTE_P and PTE_W.
 void idptbl_init(unsigned int mbi_addr)
 {
-    // TODO: Define your local variables here.
-
-    // TODO: Define your local variables here.
 
     container_init(mbi_addr);
-
-    // TODO
-    unsigned int vaddr = 0;
-    unsigned int pde_index, pte_index, perm;
     set_pdir_base(0);
-    for(int pde_index = 0; pde_index < 1024; pde_index++){
-      for(int pte_index = 0; pte_index < 1024; pte_index++){
-          vaddr = ((pde_index<<10)+pte_index)<<12;
-          if(vaddr>=VM_USERLO && vaddr <VM_USERHI)perm = PTE_P|PTE_W;
-          else perm = PTE_P|PTE_W|PTE_G;
-          set_ptbl_entry_identity(pde_index, pte_index, perm);
-      }
+    for(int i = 0; i < 1024; i++) {
+        for(int j = 0; j < 1024; j++) {
+            unsigned int vaddr = ((i<<10)+j)<<12;
+            unsigned int perm = 0;
+            if(vaddr < VM_USERHI && vaddr >= VM_USERLO) {
+                perm = PTE_P | PTE_W;
+            }
+            else {
+                perm = PTE_P | PTE_W | PTE_G;
+            }
+            set_ptbl_entry_identity(i, j, perm);
+        }
     }
-    
-    // container_init(mbi_addr);
-
-    // for(int i = 0; i < 1024; i++) {
-    //     for(int j = 0; j < 1024; j++) {
-    //         unsigned int pa = construct_pa_from_indices(i, j);
-    //         unsigned int perm = 0;
-    //         if(pa < VM_USERLO_PI || pa >= VM_USERHI_PI) {
-    //             perm = (unsigned int)set_pwu_bits(perm, 1, 1, 1);
-    //         }
-    //         else {
-    //             perm = (unsigned int)set_pwu_bits(perm, 1, 1, 0);
-    //         }
-    //         set_ptbl_entry_identity(i, j, perm);
-    //     }
-    // }
 }
