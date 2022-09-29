@@ -9,18 +9,10 @@ Debug with gdb: make qemu-gdb / make qemu-nox-gdb
 
 Edward Frazer & Rohan Ahluwalia 
 
-*Question Answers*
-
-1: The processor starts executing 32-bit code at switch_prot. The instructions movl "%eax, %cr0" sets the 
-protection enabled bit in control register 0. The instruction ljmp $PROT_MODE_CSEG, $protcseg then jumps to a 32 bit code segment.
-2: The last instruction is at jmp*%edx in the exec_kernel routine. The first instruction of the kernel is cli, which is called at the start of the kernel. 
-3: The first instruction of the kernel logic occurs in the start function, which is at address 0x1023f0 (may vary by system; we found 0x1024e4).
-4: The boot loader decides how many sectors it must read using metadata from the ELF program header (kernel info from sector 0) which specifies e_phnum, 
-    which is the number of sectors that the bootloader must process to fetch the entire kernel from disk as well as the sizes of those sections. 
-
 *Changes Summary*
 
-1. Added basic utility functions for memory paging in MATIntro.c 
-2. Set permissions for memory pages based on kernel/bios reserves in MATInit.c
-3. Implemented alloc/free for pages in MATOp.c
-4. Worked around bugged get_mml function by adding a custom handler for broken address.
+1. Introduced container memory tracking in PMM. 
+2. Introduced helper functions for a two layer page table based on indexing. Identity mapped the kernel's physical memory.
+3. Generalized helper functions to virtual addresses in MPTOpt. 
+4. Linked vaddrs to abstract page creation/the container layer in MPTKern
+and MPTNew.
