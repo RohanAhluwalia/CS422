@@ -35,5 +35,10 @@ extern void cswitch(struct kctx *from_kctx, struct kctx *to_kctx);
  */
 void kctx_switch(unsigned int from_pid, unsigned int to_pid)
 {
+    unsigned int display_pid = to_pid;
+    //dprintf("%lx %lx %lx %lx %lx %lx\n",kctx_pool[display_pid].esp, kctx_pool[display_pid].edi, 
+    //kctx_pool[display_pid].esi, kctx_pool[display_pid].ebx, kctx_pool[display_pid].ebp, kctx_pool[display_pid].eip);
+    // All from pid values are 0ed out. 
+
     cswitch(&kctx_pool[from_pid], &kctx_pool[to_pid]);
 }

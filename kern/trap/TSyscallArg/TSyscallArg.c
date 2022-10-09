@@ -12,37 +12,37 @@ extern tf_t uctx_pool[NUM_IDS];
 unsigned int syscall_get_arg1(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.eax;
 }
 
 unsigned int syscall_get_arg2(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.ebx;
 }
 
 unsigned int syscall_get_arg3(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.ecx;
 }
 
 unsigned int syscall_get_arg4(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.edx;
 }
 
 unsigned int syscall_get_arg5(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.esi;
 }
 
 unsigned int syscall_get_arg6(void)
 {
     // TODO
-    return 0;
+    return uctx_pool[get_curid()].regs.edi;
 }
 
 /**
@@ -52,6 +52,7 @@ unsigned int syscall_get_arg6(void)
 void syscall_set_errno(unsigned int errno)
 {
     // TODO
+    uctx_pool[get_curid()].regs.eax = errno;
 }
 
 /**
@@ -61,24 +62,31 @@ void syscall_set_errno(unsigned int errno)
 void syscall_set_retval1(unsigned int retval)
 {
     // TODO
+    uctx_pool[get_curid()].regs.ebx = retval;
 }
 
 void syscall_set_retval2(unsigned int retval)
 {
     // TODO
+    uctx_pool[get_curid()].regs.ecx = retval;
 }
 
 void syscall_set_retval3(unsigned int retval)
 {
     // TODO
+    uctx_pool[get_curid()].regs.edx = retval;
 }
 
 void syscall_set_retval4(unsigned int retval)
 {
     // TODO
+    uctx_pool[get_curid()].regs.esi = retval;
+
 }
 
 void syscall_set_retval5(unsigned int retval)
 {
     // TODO
+    uctx_pool[get_curid()].regs.edi = retval;
+
 }

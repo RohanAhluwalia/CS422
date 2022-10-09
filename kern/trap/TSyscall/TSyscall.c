@@ -77,7 +77,33 @@ extern uint8_t _binary___obj_user_fork_test_fork_test_start[];
  */
 void sys_spawn(void)
 {
-    // TODO
+    // Retrieve arguments from current process.
+    unsigned int elf_id = syscall_get_arg2();
+    unsigned int quota = syscall_get_arg3();
+
+
+    // Check that the elf_id is within bounds of those implemented. If not, error and return.
+    if(elf_id < 1 || elf_id > 4) {
+        syscall_set_errno(E_INVAL_PID);
+        syscall_set_retval1(NUM_IDS);
+        return;
+    }
+
+    // Attempt to allocate a new process for this id. Create a map from index to id.
+    uint8_t* id_to_addr_map[4] = {_binary___obj_user_pingpong_ping_start, _binary___obj_user_pingpong_pong_start, _binary___obj_user_pingpong_ding_start, _binary___obj_user_fork_test_fork_test_start};
+
+    unsigned int new_proc = proc_create(id_to_addr_map[elf_id-1], quota);
+
+    // Check if failure on allocation. If not, set success.
+    if(new_proc == NUM_IDS) {
+        syscall_set_errno(E_INVAL_PID);
+        syscall_set_retval1(NUM_IDS);
+    }
+    else {
+        syscall_set_errno(E_SUCC);
+        syscall_set_retval1(new_proc);
+    }
+
 }
 
 /**
@@ -89,6 +115,9 @@ void sys_spawn(void)
 void sys_yield(void)
 {
     // TODO
+    syscall_set_errno(E_SUCC);
+    thread_yield();
+
 }
 
 // Your implementation of fork

@@ -95,6 +95,19 @@ void pgflt_handler(void)
 void exception_handler(void)
 {
     // TODO
+
+
+    // Get the exception OPcode.
+    unsigned int exception_number = uctx_pool[get_curid()].trapno;
+    //dprintf("Exception Handling %ld %ld\n", exception_number, get_curid());
+    
+    // Custom handle page fault; handle others default.
+    if(exception_number == T_PGFLT) {
+        pgflt_handler();
+    }
+    else {
+        default_exception_handler();
+    }
 }
 
 static int spurious_intr_handler(void)
@@ -121,6 +134,16 @@ static int default_intr_handler(void)
 void interrupt_handler(void)
 {
     // TODO
+    unsigned int interrupt_number = uctx_pool[get_curid()].trapno;
+    if(interrupt_number == T_IRQ0 + IRQ_TIMER) {
+        timer_intr_handler();
+    }
+    else if(interrupt_number == T_IRQ0 + IRQ_SPURIOUS) {
+        spurious_intr_handler();
+    }
+    else {
+        default_intr_handler();
+    }
 }
 
 void trap(tf_t *tf)
