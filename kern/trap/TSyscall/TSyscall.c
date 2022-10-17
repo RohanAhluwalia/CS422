@@ -114,7 +114,6 @@ void sys_spawn(void)
  */
 void sys_yield(void)
 {
-    // TODO
     syscall_set_errno(E_SUCC);
     thread_yield();
 
@@ -123,5 +122,13 @@ void sys_yield(void)
 // Your implementation of fork
 void sys_fork()
 {
-    // TODO
+    unsigned int child_id = proc_fork();
+    if (child_id < NUM_IDS){
+        syscall_set_errno(E_SUCC);
+        syscall_set_retval1(child_id);
+    }
+    else{
+        syscall_set_errno(E_INVAL_PID);
+        syscall_set_retval1((unsigned int)-1);
+    }
 }

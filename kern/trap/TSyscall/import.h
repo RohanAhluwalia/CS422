@@ -21,6 +21,12 @@ void syscall_set_retval5(unsigned int retval);
 unsigned int proc_create(void *elf_addr, unsigned int quota);
 void thread_yield(void);
 
+
+unsigned int proc_fork(void);
+void copy_on_write(unsigned int id, unsigned int vaddr);
+void copy_ptbl(unsigned int from_pid, unsigned int to_pid);
+unsigned int container_get_quota(unsigned int id);
+
 #endif  /* _KERN_ */
 
 #endif  /* !_KERN_TRAP_TSYSCALL_H_ */

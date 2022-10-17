@@ -4,11 +4,15 @@ Run in qemu: make qemu / make qemu-nox
 Debug with gdb: make qemu-gdb / make qemu-nox-gdb
                 (in another terminal) gdb
 
-To use your solutions from lab 1: git merge lab1
-To use sample lab 1 solutions: copy files in samples/ to appropriate directories
 
-List here the following info:
-1. who you have worked with
-2. whether you coded this assignment together, and if not, who worked on which part
-3. brief description of what you have implemented
-4. and anything else you would like us to know
+*Collaborators*
+
+Edward Frazer (ecf27) & Rohan Ahluwalia (ra695)
+
+* Changes Summary *
+
+1. Created plan for solution together, and finished excersies 1 & 2
+2. Added Queue intro layer and init layer (debugged enqueue and dequeue issues)
+3. Added trap handling (simple cases -- left space for the copy on write)
+4. Implemented proc_fork and copy on write functions 
+5. Debugged issues with map_page and physical page addresses in fork
