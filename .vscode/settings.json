@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "gcc.h": "c",
+        "import.h": "c",
+        "string.h": "c"
+    }
+}
