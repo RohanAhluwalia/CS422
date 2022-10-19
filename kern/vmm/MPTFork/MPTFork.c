@@ -103,6 +103,7 @@ unsigned int proc_fork(void)
 void copy_on_write(unsigned int id, unsigned int vaddr)
 {
     unsigned int page_index, ptbl_entry;
+    void * src_paddr = (void *) (get_ptbl_entry_by_va(id, vaddr) & ~0xFFF);
 
     ptbl_entry = get_ptbl_entry_by_va(id, vaddr);
     rmv_ptbl_entry_by_va(id, vaddr);
@@ -114,9 +115,8 @@ void copy_on_write(unsigned int id, unsigned int vaddr)
     }
 
     //copy content
-    void * src_paddr = (void *) (get_ptbl_entry_by_va(id, vaddr) & ~0xFFF);
-    void * dst_paddr = (void *) (page_index >> 12);
-    memcpy(src_paddr, dst_paddr, PAGESIZE);
+    void * dst_paddr = (void *) (page_index << 12);
+    memcpy(dst_paddr, src_paddr, PAGESIZE);
     
     //update perms
     map_page(id, vaddr, page_index, PERM_PTU);
