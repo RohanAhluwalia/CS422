@@ -4,7 +4,6 @@
 #include <lib/debug.h>
 #include <dev/lapic.h>
 #include <pcpu/PCPUIntro/export.h>
-
 #include "import.h"
 
 
