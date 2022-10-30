@@ -16,13 +16,8 @@ struct {
     uint32_t rpos, wpos;
 } cons;
 
-
-// Lock for cons buffers
-spinlock_t consLock;
-
 void cons_init()
 {
-    spinlock_init(&consLock);
     memset(&cons, 0x0, sizeof(cons));
     serial_init();
     video_init();
@@ -31,8 +26,7 @@ void cons_init()
 void cons_intr(int (*proc)(void))
 {
     int c;
-    
-    spinlock_acquire(&consLock);
+
     while ((c = (*proc)()) != -1) {
         if (c == 0)
             continue;
@@ -40,13 +34,12 @@ void cons_intr(int (*proc)(void))
         if (cons.wpos == CONSOLE_BUFFER_SIZE)
             cons.wpos = 0;
     }
-    spinlock_release(&consLock);
 }
 
 char cons_getc(void)
 {
     int c;
-    spinlock_acquire(&consLock);
+
     // poll for any pending input characters,
     // so that this function works even when interrupts are disabled
     // (e.g., when called from the kernel monitor).
@@ -58,12 +51,8 @@ char cons_getc(void)
         c = cons.buf[cons.rpos++];
         if (cons.rpos == CONSOLE_BUFFER_SIZE)
             cons.rpos = 0;
-        
-        spinlock_release(&consLock);
         return c;
     }
-    
-    spinlock_release(&consLock);
     return 0;
 }
 
