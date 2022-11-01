@@ -79,11 +79,31 @@ extern uint8_t _binary___obj_user_pingpong_ding_start[];
 void sys_spawn(tf_t *tf)
 {
     unsigned int new_pid;
-    unsigned int elf_id, quota;
+    unsigned int elf_id, quota, pid;
     void *elf_addr;
 
     elf_id = syscall_get_arg2(tf);
     quota = syscall_get_arg3(tf);
+    pid = get_curid();
+
+    if(!container_can_consume(pid, quota)) {
+        syscall_set_errno(tf, E_EXCEEDS_QUOTA);
+        syscall_set_retval1(tf, NUM_IDS);
+        return;
+    }
+
+    if(container_get_nchildren(pid) == MAX_CHILDREN){
+        syscall_set_errno(tf,E_MAX_NUM_CHILDEN_REACHED);
+        syscall_set_retval1(tf, NUM_IDS);
+        return;
+    }
+
+    // unsigned int valid_children = pid + MAX_CHILDREN + container_get_nchildren(pid) + 1;
+    // if(valid_children > NUM_IDS){
+    //     syscall_set_errno(tf,E_INVAL_CHILD_ID);
+    //     syscall_set_retval1(tf, NUM_IDS);
+    // }
+
 
     switch (elf_id) {
     case 1:
@@ -107,8 +127,6 @@ void sys_spawn(tf_t *tf)
         return;
     }
     new_pid = proc_create(elf_addr, quota);
-
-    
 
     if (new_pid == NUM_IDS) {
         syscall_set_errno(tf, E_MAX_NUM_CHILDEN_REACHED);

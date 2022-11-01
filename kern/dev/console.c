@@ -16,8 +16,11 @@ struct {
     uint32_t rpos, wpos;
 } cons;
 
+spinlock_t cons_lock;
+
 void cons_init()
 {
+    spinlock_init(&cons_lock);
     memset(&cons, 0x0, sizeof(cons));
     serial_init();
     video_init();
@@ -81,6 +84,8 @@ char *readline(const char *prompt)
     int i;
     char c;
 
+    // spinlock_acquire(&cons_lock);
+
     if (prompt != NULL)
         dprintf("%s", prompt);
 
@@ -89,6 +94,7 @@ char *readline(const char *prompt)
         c = getchar();
         if (c < 0) {
             dprintf("read error: %e\n", c);
+            // spinlock_release(&cons_lock);
             return NULL;
         } else if ((c == '\b' || c == '\x7f') && i > 0) {
             putchar('\b');
@@ -99,6 +105,7 @@ char *readline(const char *prompt)
         } else if (c == '\n' || c == '\r') {
             putchar('\n');
             linebuf[i] = 0;
+            // spinlock_release(&cons_lock);
             return linebuf;
         }
     }

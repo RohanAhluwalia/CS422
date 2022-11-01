@@ -6,8 +6,14 @@
 #include <lib/types.h>
 #include <lib/spinlock.h>
 
+
+spinlock_t debug_print_lock;
+spinlock_t debug_trace_lock;
+
 void debug_init(void)
 {
+    spinlock_init(&debug_print_lock);
+    spinlock_init(&debug_trace_lock);
 }
 
 extern int vdprintf(const char *fmt, va_list ap);
@@ -15,10 +21,12 @@ extern int vdprintf(const char *fmt, va_list ap);
 void debug_info(const char *fmt, ...)
 {
 #ifdef DEBUG_MSG
+    spinlock_acquire(&debug_print_lock);
     va_list ap;
     va_start(ap, fmt);
     vdprintf(fmt, ap);
     va_end(ap);
+    spinlock_release(&debug_print_lock);
 #endif
 }
 
@@ -26,18 +34,21 @@ void debug_info(const char *fmt, ...)
 
 void debug_normal(const char *file, int line, const char *fmt, ...)
 {
+    spinlock_acquire(&debug_print_lock);
     dprintf("[D] %s:%d: ", file, line);
 
     va_list ap;
     va_start(ap, fmt);
     vdprintf(fmt, ap);
     va_end(ap);
+    spinlock_release(&debug_print_lock);
 }
 
 #define DEBUG_TRACEFRAMES 10
 
 static void debug_trace(uintptr_t ebp, uintptr_t *eips)
 {
+    spinlock_acquire(&debug_trace_lock);
     int i;
     uintptr_t *frame = (uintptr_t *) ebp;
 
@@ -47,10 +58,14 @@ static void debug_trace(uintptr_t ebp, uintptr_t *eips)
     }
     for (; i < DEBUG_TRACEFRAMES; i++)
         eips[i] = 0;
+    
+    spinlock_release(&debug_trace_lock);
 }
 
 gcc_noinline void debug_panic(const char *file, int line, const char *fmt, ...)
 {
+
+    spinlock_acquire(&debug_print_lock);
     int i;
     uintptr_t eips[DEBUG_TRACEFRAMES];
     va_list ap;
@@ -66,18 +81,23 @@ gcc_noinline void debug_panic(const char *file, int line, const char *fmt, ...)
         dprintf("\tfrom 0x%08x\n", eips[i]);
 
     dprintf("Kernel Panic !!!\n");
+    spinlock_release(&debug_print_lock);   
 
     halt();
 }
 
 void debug_warn(const char *file, int line, const char *fmt, ...)
 {
+    spinlock_acquire(&debug_print_lock);
+
     dprintf("[W] %s:%d: ", file, line);
 
     va_list ap;
     va_start(ap, fmt);
     vdprintf(fmt, ap);
     va_end(ap);
+
+    spinlock_release(&debug_print_lock);   
 }
 
 #endif  /* DEBUG_MSG */
