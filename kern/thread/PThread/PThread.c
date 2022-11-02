@@ -4,6 +4,7 @@
 #include <lib/debug.h>
 #include <dev/lapic.h>
 #include <pcpu/PCPUIntro/export.h>
+#include <lib/bbq.h>
 #include "import.h"
 
 
@@ -17,6 +18,7 @@ void thread_init(unsigned int mbi_addr)
     for (unsigned int i = 0; i < NUM_CPUS; i++){
         spinlock_init(&cpu_locks[i]);
     }
+    bbq_init(&shared_bbq);
     tqueue_init(mbi_addr);
     set_curid(0);
     tcb_set_state(0, TSTATE_RUN);
