@@ -5,7 +5,7 @@
 
 pid_t spawn(unsigned int elf_id, unsigned int quota);
 void yield(void);
-void produce(void);
-void consume(void);
+void produce(int v);
+int consume(void);
 
 #endif  /* !_USER_PROC_H_ */

@@ -7,15 +7,10 @@ int main(int argc, char **argv)
     unsigned int i;
     printf("ping started.\n");
 
-    // fast producing
-    for (i = 0; i < 20; i++)
-        produce();
-
     // slow producing
-    for (i = 0; i < 80; i++)
+    for (i = 0; i < 100; i++)
     {
-        if (i % 4 == 0)
-            produce();
+        produce(i);
     }
     printf("ping finished\n");
 

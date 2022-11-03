@@ -7,7 +7,6 @@
 #include <lib/types.h>
 #include <lib/x86.h>
 #include <lib/mqueue.h>
-#include <lib/multi_qlock.h>
 #include "scheduler.h"
 
 typedef struct{
@@ -17,7 +16,7 @@ typedef struct{
 void cv_init(cv_t *cvar);
 void cv_signal(cv_t *cvar);
 void cv_broadcast(cv_t *cvar);
-void cv_wait(cv_t *cvar, multiq_lock_t *lock);
+void cv_wait(cv_t *cvar, spinlock_t *lock);
 
 unsigned int get_curid(void);
 void set_curid(unsigned int curid);

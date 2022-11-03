@@ -7,10 +7,9 @@
 #include <lib/types.h>
 #include <lib/x86.h>
 #include <lib/mqueue.h>
-#include <lib/multi_qlock.h>
 #include <lib/cv.h>
 
-#define BBQ_SIZE 10
+#define BBQ_SIZE 8
 
 /**
  * Queue implementation using an array
@@ -24,7 +23,7 @@ typedef struct
     unsigned int front;
     unsigned int next_empty;
     unsigned int queue[BBQ_SIZE];
-    multiq_lock_t bbq_lock;
+    spinlock_t bbq_lock;
     cv_t item_added;
     cv_t item_removed;
 } bbq_t;

@@ -10,11 +10,11 @@
 #include "cv.h"
 
 
-void cv_wait(cv_t *cvar, multiq_lock_t *lock)
+void cv_wait(cv_t *cvar, spinlock_t *lock)
 {
     mqueue_enqueue(&(cvar->waiting), get_curid(), get_pcpu_idx());
-    scheduler_suspend_multiq_lock(&scheduler, lock);
-    multi_qlock_aquire(lock);
+    scheduler_suspend_spinlock(&scheduler, lock);
+    spinlock_acquire(lock);
 }
 
 void cv_signal(cv_t *cvar)

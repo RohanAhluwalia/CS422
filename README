@@ -13,3 +13,5 @@ Both of us coded together on the majority of the assignment. Rohan handled part 
 
 # Bounded Buffer Implemention
 
+Our solution to the producer-consumer problem was based on the chapter 5 example in the textbook. For simplicity, we did not use the
+multi-queue based locking system. Instead we used the regular spinlock. 
