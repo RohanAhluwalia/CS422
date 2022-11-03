@@ -8,7 +8,7 @@ int main(int argc, char **argv)
     printf("ping started.\n");
 
     // slow producing
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < 200; i++)
     {
         produce(i);
     }

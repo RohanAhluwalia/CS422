@@ -20,18 +20,18 @@
 
 typedef struct
 {
-    unsigned int front;
-    unsigned int next_empty;
     unsigned int queue[BBQ_SIZE];
-    spinlock_t bbq_lock;
-    cv_t item_added;
-    cv_t item_removed;
+    unsigned int head;
+    unsigned int next;
+    spinlock_t lock;
+    cv_t added;
+    cv_t removed;
 } bbq_t;
 
 extern bbq_t shared_bbq;
 
 void bbq_init(bbq_t *bbq);
-void bbq_insert(bbq_t *bbq, unsigned int item);
+void bbq_insert(bbq_t *bbq, unsigned int insert);
 unsigned int bbq_remove(bbq_t *bbq);
 
 #endif /* _KERN_ */

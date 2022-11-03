@@ -75,17 +75,15 @@ void thread_yield(void)
 
 void sched_update(void)
 {
-    unsigned int current_cpu = get_pcpu_idx();
-    // KERN_DEBUG("CPU %d just got interrupted\n", current_cpu);
-    spinlock_acquire(&sched_update_lock[current_cpu]);
-    ms_elapsed[current_cpu] += (1000 / LAPIC_TIMER_INTR_FREQ);
-    if (ms_elapsed[current_cpu] >= SCHED_SLICE)
+    unsigned int cpu_idx = get_pcpu_idx();
+    spinlock_acquire(&sched_update_lock[cpu_idx]);
+    ms_elapsed[cpu_idx] += (1000 / LAPIC_TIMER_INTR_FREQ);
+    if (ms_elapsed[cpu_idx] >= SCHED_SLICE)
     {
-        ms_elapsed[current_cpu] = 0;
-        spinlock_release(&sched_update_lock[current_cpu]);
-        // KERN_DEBUG("CPU %d is yielding\n", current_cpu);
+        ms_elapsed[cpu_idx] = 0; // reset 
+        spinlock_release(&sched_update_lock[cpu_idx]);
         thread_yield();
         return;
     }
-    spinlock_release(&sched_update_lock[current_cpu]);
+    spinlock_release(&sched_update_lock[cpu_idx]);
 }

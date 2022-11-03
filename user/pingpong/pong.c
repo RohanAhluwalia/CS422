@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     printf("pong started.\n");
 
     unsigned int i;
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 200; i++) {
         consume();
     }
 
