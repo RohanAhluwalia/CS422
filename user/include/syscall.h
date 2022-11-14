@@ -108,7 +108,7 @@ static gcc_inline int sys_fstat(int fd, struct file_stat *st)
 
     return errno ? -1 : 0;
 }
-
+/* MODIFIED */
 static gcc_inline int sys_link(char *old, char *new)
 {
     int errno, ret;
@@ -118,7 +118,9 @@ static gcc_inline int sys_link(char *old, char *new)
                    : "i" (T_SYSCALL),
                      "a" (SYS_link),
                      "b" (old),
-                     "c" (new)
+                     "c" (new),
+                     "d" (strlen(old)),
+                     "S" (strlen(new))
                    : "cc", "memory");
 
     return errno ? -1 : 0;
@@ -132,7 +134,8 @@ static gcc_inline int sys_unlink(char *path)
                   : "=a" (errno), "=b" (ret)
                   : "i" (T_SYSCALL),
                     "a" (SYS_unlink),
-                    "b" (path)
+                    "b" (path),
+                    "c" (strlen(path))
                   : "cc", "memory");
 
     return errno ? -1 : 0;
@@ -148,7 +151,8 @@ static gcc_inline int sys_open(char *path, int omode)
                   : "i" (T_SYSCALL),
                     "a" (SYS_open),
                     "b" (path),
-                    "c" (omode)
+                    "c" (omode),
+                    "d" (strlen(path))
                   : "cc", "memory");
 
     return errno ? -1 : fd;
@@ -162,7 +166,8 @@ static gcc_inline int sys_mkdir(char *path)
                   : "=a" (errno), "=b" (ret)
                   : "i" (T_SYSCALL),
                     "a" (SYS_mkdir),
-                    "b" (path)
+                    "b" (path),
+                    "c" (strlen(path))
                   : "cc", "memory");
 
     return errno ? -1 : 0;
@@ -176,7 +181,8 @@ static gcc_inline int sys_chdir(char *path)
                   : "=a" (errno), "=b" (ret)
                   : "i" (T_SYSCALL),
                     "a" (SYS_chdir),
-                    "b" (path)
+                    "b" (path),
+                    "c" (strlen(path))
                   : "cc", "memory");
 
     return errno ? -1 : 0;

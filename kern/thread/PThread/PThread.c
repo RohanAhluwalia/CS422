@@ -8,6 +8,7 @@
 
 #include "import.h"
 
+unsigned const int IO_QUEUE = 0;
 static spinlock_t sched_lk;
 
 unsigned int sched_ticks[NUM_CPUS];
@@ -111,13 +112,50 @@ void thread_sleep(void *chan, spinlock_t *lk)
     // miss any wakeup (wakeup runs with sched_lk locked), so it's okay to
     // release lock.
 
+    /* MODIFIED 
+    
+    Some observations.
+
+    1. "chan" is an arbitrary void pointer that identifies some hardware resource. It doesn't have any significance in WHERE we 
+    put the waiting thread. 
+    */ 
+
+
+    unsigned int curr_pid = get_curid();
+    KERN_DEBUG("THREAD_SLEEP: SLEEPING PROCESS %ld\n", curr_pid);
+
+    spinlock_acquire(&sched_lk); // Acquire the scheduler lock
+    spinlock_release(lk); // Release the old lock.
+
+
     // TODO: Go to sleep.
+    tcb_set_state(curr_pid, TSTATE_SLEEP);
+    tcb_set_chan(curr_pid, chan);
+    tqueue_enqueue(IO_QUEUE, curr_pid); // We enqueue our current TCB 
 
     // TODO: Context switch.
+    unsigned int new_pid = tqueue_dequeue(NUM_IDS); // Get a potential new thread
 
-    // TODO: Tidy up.
+    if(new_pid != NUM_CPUS) {
+        set_curid(new_pid);
+        tcb_set_state(new_pid, TSTATE_RUN);
+        spinlock_release(&sched_lk); // We're done with scheduling ops; release the lock.
+        KERN_DEBUG("THREAD_SLEEP: NEW E PROCESS %ld\n", new_pid);
+
+        kctx_switch(curr_pid, new_pid);
+    }
+    else {
+        spinlock_release(&sched_lk);
+    }
+
+    // TODO: Tidy up. 
+    spinlock_acquire(&sched_lk); // We've been switched back into. Acquire scheduler lock.
+    tcb_set_state(curr_pid, TSTATE_RUN); 
+    tcb_set_chan(curr_pid, 0); // Void chan; should've been done before but ensure it's the case.
+    spinlock_release(&sched_lk);
 
     // TODO: Reacquire original lock.
+    spinlock_acquire(lk);
 }
 
 /**
@@ -126,4 +164,36 @@ void thread_sleep(void *chan, spinlock_t *lk)
 void thread_wakeup(void *chan)
 {
     // TODO
+    spinlock_acquire(&sched_lk);
+    /* 
+    1. Go through every thread on the process 0 waiting queue.
+        a. If the TCB chan is matching, dequeue it and move it to the ready queue.
+        b. If the thread does not match, save it on the stack to be re-enqueued.
+    
+    */
+    
+    unsigned int stack_of_pids_to_maintain[NUM_IDS + NUM_CPUS];
+    unsigned int num_to_maintain = 0;
+    // KERN_DEBUG("THREAD_WAKEUP: CALLED %ld\n", num_to_maintain);
+    unsigned int pid = tqueue_dequeue(IO_QUEUE);
+    while(pid != NUM_IDS) {
+
+        if(tcb_get_chan(pid) == chan) {
+            KERN_DEBUG("THREAD_WAKEUP: WAKING UP PROCESS %ld AS %ld\n", pid, get_curid());
+            // In this case, we set it to ready and enqueue.
+            tcb_set_state(pid, TSTATE_READY);
+            tqueue_enqueue(NUM_IDS, pid);
+        }
+        else {
+            // In the other case, we save it so that we can put it back.
+            stack_of_pids_to_maintain[num_to_maintain] = pid;
+            num_to_maintain++;
+        }
+        pid = tqueue_dequeue(IO_QUEUE);
+    }
+    for(unsigned int i = 0; i < num_to_maintain; i++) {
+        tqueue_enqueue(IO_QUEUE, stack_of_pids_to_maintain[i]);
+    }
+    
+    spinlock_release(&sched_lk);
 }

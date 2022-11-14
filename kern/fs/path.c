@@ -39,8 +39,39 @@
  */
 static char *skipelem(char *path, char *name)
 {
+    /* MODIFIED*/
     // TODO
-    return 0;
+    // KERN_DEBUG("Skipping Element Called On: %s\n", path);
+    // Find "name"
+    int counter = 0;
+    while(path[counter] == '/' && path[counter] != '\0') {
+        counter++;
+    }
+    // Check the case where there's nothing left to process.
+    if(path[counter] == '\0') {
+        return 0;
+    }
+
+    int left_name_bound = counter;
+    while(path[counter] != '/' && path[counter] != '\0') {
+        counter++;
+    }
+    int right_name_bound = counter;
+
+    // Find the first index at which the new string begins.
+    while(path[counter] == '/' && path[counter] != '\0') {
+        counter++;
+    }
+    int continue_location = counter; 
+
+    // Copy over name
+    for(int i = 0; i < DIRSIZ && i < (right_name_bound - left_name_bound); i++) {
+        name[i] = path[left_name_bound + i];
+    }
+    
+    name[min(right_name_bound - left_name_bound, DIRSIZ)] = '\0';
+
+    return &path[continue_location];
 }
 
 /**
@@ -61,12 +92,28 @@ static struct inode *namex(char *path, bool nameiparent, char *name)
         ip = inode_dup((struct inode *) tcb_get_cwd(get_curid()));
     }
 
+    /* MODIFIED */
     while ((path = skipelem(path, name)) != 0) {
         // TODO
-    }
-    if (nameiparent) {
-        inode_put(ip);
-        return 0;
+        KERN_DEBUG("NAMEX: ENTERING NAMEX LOOP WITH: %s, %ld\n", path, ip);
+
+        inode_lock(ip);
+
+        // Check validity of IP: that it exists and that it is a directory.
+        if(ip == 0 || ip->type != T_DIR ) {
+            
+            inode_unlockput(ip);
+            return 0;
+        }
+
+        // If we're looking for the parent directory and we have no more of the path to process, we end early.
+        if(nameiparent && path[0] == '\0') {
+            inode_unlockput(ip);
+            return;
+        }
+
+        inode_unlock(ip);
+        ip = dir_lookup(ip, name, 0);
     }
     return ip;
 }

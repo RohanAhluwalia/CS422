@@ -16,6 +16,7 @@
 #include "fcntl.h"
 #include "log.h"
 
+unsigned const int FILEBUF_MAX_SIZE = 10000;
 /**
  * This function is not a system call handler, but an auxiliary function
  * used by sys_open.
@@ -27,6 +28,13 @@
 static int fdalloc(struct file *f)
 {
     // TODO
+    struct file** files = tcb_get_openfiles(get_curid());
+    for(unsigned int i = 0; i < NOFILE; i++) {
+        if(files[i] == NULL) {
+            return i;
+        }
+    }
+
     return -1;
 }
 
@@ -42,6 +50,21 @@ static int fdalloc(struct file *f)
 void sys_read(tf_t *tf)
 {
     // TODO
+    struct file** files = tcb_get_openfiles(get_curid());
+    unsigned int fd = syscall_get_arg2(tf);
+    char kernel_buffer[FILEBUF_MAX_SIZE];
+    // Check FD validity
+    if(fd >= NOFILE) {
+        syscall_set_errno(tf, E_BADF);
+        syscall_set_retval1(tf, -1);
+        return;
+    }
+    // Check bounds on the buffer and n.
+    
+    
+
+
+
 }
 
 /**
@@ -84,8 +107,8 @@ void sys_link(tf_t * tf)
     char name[DIRSIZ], new[128], old[128];
     struct inode *dp, *ip;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), old, 128);
-    pt_copyin(get_curid(), syscall_get_arg3(tf), new, 128);
+    pt_copyin(get_curid(), syscall_get_arg2(tf), old, syscall_get_arg4(tf) + 1);
+    pt_copyin(get_curid(), syscall_get_arg3(tf), new, syscall_get_arg4(tf) + 1);
 
     if ((ip = namei(old)) == 0) {
         syscall_set_errno(tf, E_NEXIST);
@@ -155,7 +178,7 @@ void sys_unlink(tf_t *tf)
     char name[DIRSIZ], path[128];
     uint32_t off;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, 128);
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
 
     if ((dp = nameiparent(path, name)) == 0) {
         syscall_set_errno(tf, E_DISK_OP);
@@ -257,7 +280,7 @@ void sys_open(tf_t *tf)
     struct file *f;
     struct inode *ip;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, 128);
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg4(tf) + 1);
     omode = syscall_get_arg3(tf);
 
     if (omode & O_CREATE) {
@@ -308,7 +331,7 @@ void sys_mkdir(tf_t *tf)
     char path[128];
     struct inode *ip;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, 128);
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
 
     begin_trans();
     if ((ip = (struct inode *) create(path, T_DIR, 0, 0)) == 0) {
@@ -327,7 +350,7 @@ void sys_chdir(tf_t *tf)
     struct inode *ip;
     int pid = get_curid();
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, 128);
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
 
     if ((ip = namei(path)) == 0) {
         syscall_set_errno(tf, E_DISK_OP);
