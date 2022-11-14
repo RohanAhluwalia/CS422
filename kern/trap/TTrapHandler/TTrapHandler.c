@@ -127,6 +127,7 @@ void interrupt_handler(tf_t *tf)
         intr_eoi();
         break;
     case T_IRQ0 + IRQ_IDE2:
+        spurious_intr_handler();
         break;
     default:
         default_intr_handler();

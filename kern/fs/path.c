@@ -83,7 +83,7 @@ static char *skipelem(char *path, char *name)
 static struct inode *namex(char *path, bool nameiparent, char *name)
 {
     struct inode *ip;
-
+        
     // If path is a full path, get the pointer to the root inode. Otherwise get
     // the inode corresponding to the current working directory.
     if (*path == '/') {
@@ -95,25 +95,33 @@ static struct inode *namex(char *path, bool nameiparent, char *name)
     /* MODIFIED */
     while ((path = skipelem(path, name)) != 0) {
         // TODO
-        KERN_DEBUG("NAMEX: ENTERING NAMEX LOOP WITH: %s, %ld\n", path, ip);
+        // KERN_DEBUG("NAMEX: ENTERING NAMEX LOOP WITH: %s, %s, %ld\n", path, name, ip);
 
         inode_lock(ip);
 
         // Check validity of IP: that it exists and that it is a directory.
         if(ip == 0 || ip->type != T_DIR ) {
-            
             inode_unlockput(ip);
             return 0;
         }
 
         // If we're looking for the parent directory and we have no more of the path to process, we end early.
         if(nameiparent && path[0] == '\0') {
-            inode_unlockput(ip);
-            return;
+            inode_unlock(ip);
+            return ip;
         }
 
-        inode_unlock(ip);
-        ip = dir_lookup(ip, name, 0);
+        struct inode* next  = dir_lookup(ip, name, 0);
+        inode_unlockput(ip);
+        if(next == 0) {
+            return 0;
+        }
+        ip = next;
+    }
+    // ("NAMEX: EXITING FUNCTION WITH IP %ld\n", ip);
+    if(nameiparent) {
+        inode_put(ip);
+        return 0;
     }
     return ip;
 }

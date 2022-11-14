@@ -6,6 +6,7 @@
 #include <kern/lib/string.h>
 #include <kern/lib/trap.h>
 #include <kern/lib/syscall.h>
+#include <kern/lib/spinlock.h>
 #include <kern/thread/PTCBIntro/export.h>
 #include <kern/thread/PCurID/export.h>
 #include <kern/trap/TSyscallArg/export.h>
@@ -16,7 +17,30 @@
 #include "fcntl.h"
 #include "log.h"
 
-unsigned const int FILEBUF_MAX_SIZE = 10000;
+/* MODIFIED: Helper Structures/Functions*/
+#define FILEBUF_MAX_SIZE 10000
+char kernel_buffer[FILEBUF_MAX_SIZE];
+spinlock_t kernel_buffer_lk;
+spinlock_t* kblk = &kernel_buffer_lk;
+
+void tf_success(tf_t* tf) {
+    syscall_set_errno(tf, E_SUCC);
+    syscall_set_retval1(tf, 0);
+}
+
+void tf_error(tf_t* tf, enum __error_nr error_opcode) {
+    syscall_set_errno(tf, error_opcode);
+    syscall_set_retval1(tf, -1);
+}
+
+bool buffer_overflows(unsigned int start, unsigned int length) {
+    return !(start >= VM_USERLO && start + length <= VM_USERHI);
+}
+
+bool exceeds_max_length(unsigned int length, unsigned int max) {
+    return length > max;
+}
+
 /**
  * This function is not a system call handler, but an auxiliary function
  * used by sys_open.
@@ -31,6 +55,7 @@ static int fdalloc(struct file *f)
     struct file** files = tcb_get_openfiles(get_curid());
     for(unsigned int i = 0; i < NOFILE; i++) {
         if(files[i] == NULL) {
+            tcb_set_openfiles(get_curid(), i, f);
             return i;
         }
     }
@@ -50,21 +75,46 @@ static int fdalloc(struct file *f)
 void sys_read(tf_t *tf)
 {
     // TODO
-    struct file** files = tcb_get_openfiles(get_curid());
+
+    // Get initial arguments we need to check bounds for.
+    unsigned int pid = get_curid();
     unsigned int fd = syscall_get_arg2(tf);
-    char kernel_buffer[FILEBUF_MAX_SIZE];
+    unsigned int buf = syscall_get_arg3(tf);
+    unsigned int length = syscall_get_arg4(tf);
+
     // Check FD validity
     if(fd >= NOFILE) {
-        syscall_set_errno(tf, E_BADF);
-        syscall_set_retval1(tf, -1);
+        tf_error(tf, E_BADF);
         return;
     }
+
     // Check bounds on the buffer and n.
+    if(buffer_overflows(buf, length)) {
+        tf_error(tf, E_INVAL_ADDR);
+        return;
+    }
+
+    // Check file validity by getting a pointer from user descriptor space.
+    struct file* file = tcb_get_openfiles(pid)[fd];
+    if(file == NULL || file->type != FD_INODE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Do work
+    spinlock_acquire(kblk);
+    int read_results = file_read(file, kernel_buffer, length);
+    syscall_set_retval1(tf, read_results);
+    if(read_results > 0) {
+        pt_copyout(kernel_buffer, pid, buf, length);
+        syscall_set_errno(tf, E_SUCC);
+    }
+    else {
+        syscall_set_errno(tf, E_BADF); // Can't call helper (tf_error) bc we need to maintain read results.
+    }
+    spinlock_release(kblk);
+
     
-    
-
-
-
 }
 
 /**
@@ -79,6 +129,43 @@ void sys_read(tf_t *tf)
 void sys_write(tf_t *tf)
 {
     // TODO
+
+    // Get initial arguments we need to check bounds for.
+    unsigned int pid = get_curid();
+    unsigned int fd = syscall_get_arg2(tf);
+    unsigned int buf = syscall_get_arg3(tf);
+    unsigned int length = syscall_get_arg4(tf);
+
+    // Check FD validity
+    if(fd >= NOFILE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Check bounds on the buffer and n.
+    if(buffer_overflows(buf, length)) {
+        tf_error(tf, E_INVAL_ADDR);
+        return;
+    }
+
+    // Check file validity by getting a pointer from user descriptor space.
+    struct file* file = tcb_get_openfiles(pid)[fd];
+    if(file == NULL || file->type != FD_INODE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    spinlock_acquire(kblk);
+    pt_copyin(pid, buf, kernel_buffer, length); // Copy user buffer to kernel buffer
+    int write_results = file_write(file, kernel_buffer, length); // Business logic write
+    if(write_results > 0) {
+        syscall_set_errno(tf, E_SUCC);
+    }
+    else {
+        syscall_set_errno(tf, E_BADF);
+    }
+
+    spinlock_release(kblk);
 }
 
 /**
@@ -88,6 +175,27 @@ void sys_write(tf_t *tf)
 void sys_close(tf_t *tf)
 {
     // TODO
+    unsigned int pid = get_curid();
+    unsigned int fd = syscall_get_arg2(tf);
+
+    // Check FD validity
+    if(fd >= NOFILE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Check file validity by getting a pointer from user descriptor space.
+    struct file* file = tcb_get_openfiles(pid)[fd];
+    if(file == NULL || file->ref < 1) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Business logic: close the file and void the fd.
+    file_close(file);
+    tcb_set_openfiles(pid, fd, NULL);
+    tf_success(tf);
+
 }
 
 /**
@@ -97,6 +205,39 @@ void sys_close(tf_t *tf)
 void sys_fstat(tf_t *tf)
 {
     // TODO
+    unsigned int pid = get_curid();
+    unsigned int fd = syscall_get_arg2(tf);
+    unsigned int stat_location = syscall_get_arg3(tf);
+    if(fd >= NOFILE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    if(buffer_overflows(stat_location, sizeof(struct file_stat))) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Check file validity by getting a pointer from user descriptor space.
+    struct file* file = tcb_get_openfiles(pid)[fd];
+    if(file == NULL || file->type != FD_INODE) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    // Business Logic
+    struct file_stat fs_stat_host;
+    int filestat_results = file_stat(file, &fs_stat_host);
+    // Check if we have bad results
+    if(filestat_results != 0) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    pt_copyout(&filestat_results, pid, stat_location, sizeof(struct file_stat));
+    tf_success(tf);
+
+
 }
 
 /**
@@ -106,9 +247,20 @@ void sys_link(tf_t * tf)
 {
     char name[DIRSIZ], new[128], old[128];
     struct inode *dp, *ip;
+    unsigned int length1 = syscall_get_arg4(tf);
+    unsigned int length2 = syscall_get_arg5(tf);
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), old, syscall_get_arg4(tf) + 1);
-    pt_copyin(get_curid(), syscall_get_arg3(tf), new, syscall_get_arg4(tf) + 1);
+    if(exceeds_max_length(length1, 128) || buffer_overflows(syscall_get_arg2(tf), length1)) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+    if(exceeds_max_length(length2, 128) || buffer_overflows(syscall_get_arg3(tf), length2)) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    pt_copyin(get_curid(), syscall_get_arg2(tf), old, length1);
+    pt_copyin(get_curid(), syscall_get_arg3(tf), new, length2);
 
     if ((ip = namei(old)) == 0) {
         syscall_set_errno(tf, E_NEXIST);
@@ -178,7 +330,13 @@ void sys_unlink(tf_t *tf)
     char name[DIRSIZ], path[128];
     uint32_t off;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
+    unsigned int length = syscall_get_arg3(tf);
+    if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, length);
 
     if ((dp = nameiparent(path, name)) == 0) {
         syscall_set_errno(tf, E_DISK_OP);
@@ -280,7 +438,13 @@ void sys_open(tf_t *tf)
     struct file *f;
     struct inode *ip;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg4(tf) + 1);
+    unsigned int length = syscall_get_arg4(tf);
+    if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, length);
     omode = syscall_get_arg3(tf);
 
     if (omode & O_CREATE) {
@@ -331,7 +495,13 @@ void sys_mkdir(tf_t *tf)
     char path[128];
     struct inode *ip;
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
+    unsigned int length = syscall_get_arg3(tf);
+    if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
+        tf_error(tf, E_BADF);
+        return;
+    }
+
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, length);
 
     begin_trans();
     if ((ip = (struct inode *) create(path, T_DIR, 0, 0)) == 0) {
@@ -350,7 +520,13 @@ void sys_chdir(tf_t *tf)
     struct inode *ip;
     int pid = get_curid();
 
-    pt_copyin(get_curid(), syscall_get_arg2(tf), path, syscall_get_arg3(tf) + 1);
+    unsigned int length = syscall_get_arg3(tf);
+    if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
+        tf_error(tf, E_BADF);
+        return;
+
+    }
+    pt_copyin(get_curid(), syscall_get_arg2(tf), path, length);
 
     if ((ip = namei(path)) == 0) {
         syscall_set_errno(tf, E_DISK_OP);
