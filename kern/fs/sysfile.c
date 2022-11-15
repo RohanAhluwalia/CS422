@@ -23,6 +23,9 @@ char kernel_buffer[FILEBUF_MAX_SIZE];
 spinlock_t kernel_buffer_lk;
 spinlock_t* kblk = &kernel_buffer_lk;
 
+void kernel_buffer_lk_init() {
+    spinlock_init(kblk);
+}
 void tf_success(tf_t* tf) {
     syscall_set_errno(tf, E_SUCC);
     syscall_set_retval1(tf, 0);
@@ -38,7 +41,7 @@ bool buffer_overflows(unsigned int start, unsigned int length) {
 }
 
 bool exceeds_max_length(unsigned int length, unsigned int max) {
-    return length > max;
+    return (length > max) || (length == 0);
 }
 
 /**
@@ -81,7 +84,7 @@ void sys_read(tf_t *tf)
     unsigned int fd = syscall_get_arg2(tf);
     unsigned int buf = syscall_get_arg3(tf);
     unsigned int length = syscall_get_arg4(tf);
-
+    //KERN_DEBUG("SYS_READ: ENTERING\n");
     // Check FD validity
     if(fd >= NOFILE) {
         tf_error(tf, E_BADF);
@@ -104,8 +107,9 @@ void sys_read(tf_t *tf)
     // Do work
     spinlock_acquire(kblk);
     int read_results = file_read(file, kernel_buffer, length);
+    //KERN_DEBUG("SYS_READ: Got passed basic safety checks. (%d)\n", read_results);
     syscall_set_retval1(tf, read_results);
-    if(read_results > 0) {
+    if(read_results >= 0) {
         pt_copyout(kernel_buffer, pid, buf, length);
         syscall_set_errno(tf, E_SUCC);
     }
@@ -135,7 +139,7 @@ void sys_write(tf_t *tf)
     unsigned int fd = syscall_get_arg2(tf);
     unsigned int buf = syscall_get_arg3(tf);
     unsigned int length = syscall_get_arg4(tf);
-
+    // KERN_DEBUG("SYS_WRITE: STARTING %ld %ld %ld %ld\n", pid, fd, buf, length);
     // Check FD validity
     if(fd >= NOFILE) {
         tf_error(tf, E_BADF);
@@ -158,13 +162,13 @@ void sys_write(tf_t *tf)
     spinlock_acquire(kblk);
     pt_copyin(pid, buf, kernel_buffer, length); // Copy user buffer to kernel buffer
     int write_results = file_write(file, kernel_buffer, length); // Business logic write
+    syscall_set_retval1(tf, write_results);
     if(write_results > 0) {
         syscall_set_errno(tf, E_SUCC);
     }
     else {
         syscall_set_errno(tf, E_BADF);
     }
-
     spinlock_release(kblk);
 }
 
@@ -247,8 +251,8 @@ void sys_link(tf_t * tf)
 {
     char name[DIRSIZ], new[128], old[128];
     struct inode *dp, *ip;
-    unsigned int length1 = syscall_get_arg4(tf);
-    unsigned int length2 = syscall_get_arg5(tf);
+    unsigned int length1 = syscall_get_arg4(tf) + 1;
+    unsigned int length2 = syscall_get_arg5(tf) + 1;
 
     if(exceeds_max_length(length1, 128) || buffer_overflows(syscall_get_arg2(tf), length1)) {
         tf_error(tf, E_BADF);
@@ -330,9 +334,10 @@ void sys_unlink(tf_t *tf)
     char name[DIRSIZ], path[128];
     uint32_t off;
 
-    unsigned int length = syscall_get_arg3(tf);
+    unsigned int length = syscall_get_arg3(tf) + 1;
     if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
         tf_error(tf, E_BADF);
+        KERN_DEBUG("FAILING TO START AN UNLINK %ld %ld\n", length, syscall_get_arg2(tf));
         return;
     }
 
@@ -438,7 +443,7 @@ void sys_open(tf_t *tf)
     struct file *f;
     struct inode *ip;
 
-    unsigned int length = syscall_get_arg4(tf);
+    unsigned int length = syscall_get_arg4(tf) + 1;
     if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
         tf_error(tf, E_BADF);
         return;
@@ -495,7 +500,7 @@ void sys_mkdir(tf_t *tf)
     char path[128];
     struct inode *ip;
 
-    unsigned int length = syscall_get_arg3(tf);
+    unsigned int length = syscall_get_arg3(tf) + 1;
     if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
         tf_error(tf, E_BADF);
         return;
@@ -520,7 +525,7 @@ void sys_chdir(tf_t *tf)
     struct inode *ip;
     int pid = get_curid();
 
-    unsigned int length = syscall_get_arg3(tf);
+    unsigned int length = syscall_get_arg3(tf) + 1;
     if(exceeds_max_length(length, 128) || buffer_overflows(syscall_get_arg2(tf), length)) {
         tf_error(tf, E_BADF);
         return;

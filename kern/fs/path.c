@@ -40,23 +40,25 @@
 static char *skipelem(char *path, char *name)
 {
     /* MODIFIED*/
-    // TODO
-    // KERN_DEBUG("Skipping Element Called On: %s\n", path);
-    // Find "name"
+ 
     int counter = 0;
     while(path[counter] == '/' && path[counter] != '\0') {
         counter++;
     }
+
     // Check the case where there's nothing left to process.
     if(path[counter] == '\0') {
         return 0;
     }
 
-    int left_name_bound = counter;
+    int left_name_bound = counter; // Left name bound is the first non-/ character.
+    int right_name_bound = counter;
     while(path[counter] != '/' && path[counter] != '\0') {
         counter++;
+        if((right_name_bound - left_name_bound) < DIRSIZ - 1) {
+            right_name_bound++; // Right name bound caps out at DIR_SIZ - 1; place that we put name.
+        }
     }
-    int right_name_bound = counter;
 
     // Find the first index at which the new string begins.
     while(path[counter] == '/' && path[counter] != '\0') {
@@ -65,11 +67,11 @@ static char *skipelem(char *path, char *name)
     int continue_location = counter; 
 
     // Copy over name
-    for(int i = 0; i < DIRSIZ && i < (right_name_bound - left_name_bound); i++) {
-        name[i] = path[left_name_bound + i];
+    for(int i = left_name_bound; i < right_name_bound; i++) {
+        name[i-left_name_bound] = path[i];
     }
+    name[right_name_bound] = '\0';
     
-    name[min(right_name_bound - left_name_bound, DIRSIZ)] = '\0';
 
     return &path[continue_location];
 }
@@ -100,7 +102,7 @@ static struct inode *namex(char *path, bool nameiparent, char *name)
         inode_lock(ip);
 
         // Check validity of IP: that it exists and that it is a directory.
-        if(ip == 0 || ip->type != T_DIR ) {
+        if(ip->type != T_DIR ) {
             inode_unlockput(ip);
             return 0;
         }
@@ -113,9 +115,11 @@ static struct inode *namex(char *path, bool nameiparent, char *name)
 
         struct inode* next  = dir_lookup(ip, name, 0);
         inode_unlockput(ip);
+
         if(next == 0) {
             return 0;
         }
+        
         ip = next;
     }
     // ("NAMEX: EXITING FUNCTION WITH IP %ld\n", ip);

@@ -19,7 +19,7 @@ void intr_init(void);
 void bufcache_init(void);
 void inode_init(void);
 void file_init(void);
-
+void kernel_buffer_lk_init(void);
 void devinit(uintptr_t mbi_addr)
 {
     seg_init(0);
@@ -50,6 +50,7 @@ void devinit(uintptr_t mbi_addr)
     file_init();      // file table
     inode_init();     // inode cache
     ide_init();
+    kernel_buffer_lk_init();
     KERN_INFO("[BSP KERN] IDE disk driver initialized\n");
 }
 

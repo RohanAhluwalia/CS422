@@ -19,12 +19,12 @@ typedef struct dirent dirent;
 inode *dir_lookup(inode *dp, char *name, uint32_t * poff)
 {
     /* MODIFIED */
-    // KERN_DEBUG("CALLING DIR_LOOKUP WITH NAME: %s\n", name );
     uint32_t off, inum;
     struct dirent de;
 
     if (dp->type != T_DIR)
         KERN_PANIC("dir_lookup not DIR");
+
     //TODO
     dirent curr_candidate;
     for(unsigned int i = 0; i < dp->size; i += sizeof(dirent)) { // Maintain offset in the current inode with i
@@ -58,8 +58,6 @@ int dir_link(struct inode *dp, char *name, uint32_t inum)
     for(unsigned int i = 0; i < dp->size; i += sizeof(dirent)) { // Maintain offset in the current inode with i
         inode_read(dp, &curr_candidate, i, sizeof(dirent));
         if(curr_candidate.inum == 0) {
-            // KERN_DEBUG("DIR_LINK: SUCCESSFULLY WRITING IN A LINK AT %ld\n", i);
-            // Use curr_candidate as the source for an inode write into the current inode with new directory info.
             strncpy(curr_candidate.name, name, DIRSIZ); 
             curr_candidate.inum = inum;
             inode_write(dp, &curr_candidate, i, sizeof(dirent));
