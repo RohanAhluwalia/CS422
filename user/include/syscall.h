@@ -188,4 +188,18 @@ static gcc_inline int sys_chdir(char *path)
     return errno ? -1 : 0;
 }
 
+static gcc_inline int sys_readline(char *s)
+{
+  int errno, ret;
+
+  asm volatile ("int %2"
+                : "=a"(errno), "=b"(ret)
+                : "i" (T_SYSCALL),
+                  "a" (SYS_readline),
+                  "b" (s)
+                :  "cc", "memory");
+
+  return errno ? -1 : 0;
+}
+
 #endif  /* !_USER_SYSCALL_H_ */

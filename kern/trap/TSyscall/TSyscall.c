@@ -6,8 +6,11 @@
 #include <lib/syscall.h>
 #include <dev/intr.h>
 #include <pcpu/PCPUIntro/export.h>
+#include <lib/string.h>
+#include <dev/console.h>
 
 #include "import.h"
+#define BUFLEN 1024 // from Office Hours (console.c)
 
 static char sys_buf[NUM_IDS][PAGESIZE];
 
@@ -58,7 +61,7 @@ extern uint8_t _binary___obj_user_pingpong_ping_start[];
 extern uint8_t _binary___obj_user_pingpong_pong_start[];
 extern uint8_t _binary___obj_user_pingpong_ding_start[];
 extern uint8_t _binary___obj_user_fstest_fstest_start[];
-
+extern uint8_t _binary___obj_user_shell_shell_start[];
 /**
  * Spawns a new child process.
  * The user level library function sys_spawn (defined in user/include/syscall.h)
@@ -116,6 +119,9 @@ void sys_spawn(tf_t *tf)
     case 4:
         elf_addr = _binary___obj_user_fstest_fstest_start;
         break;
+    case 5:
+        elf_addr = _binary___obj_user_shell_shell_start;
+        break;
     default:
         syscall_set_errno(tf, E_INVAL_PID);
         syscall_set_retval1(tf, NUM_IDS);
@@ -143,4 +149,32 @@ void sys_yield(tf_t *tf)
 {
     thread_yield();
     syscall_set_errno(tf, E_SUCC);
+}
+
+
+/**
+ * Reads line from shell terminal
+ * 
+*/
+void sys_readline(tf_t *tf)
+{
+    char *kernel_buffer;
+    int read;
+
+    unsigned curid = get_curid();
+    uintptr_t user_buffer = syscall_get_arg2(tf);
+
+    kernel_buffer = readline("$> ");
+    uintptr_t buf_len = strnlen(kernel_buffer, BUFLEN - 1);
+    kernel_buffer[buf_len] = '\0';
+
+    if(pt_copyout((void*)kernel_buffer, curid, user_buffer, buf_len) != buf_len){
+        KERN_PANIC("ERROR: readline failed");
+        syscall_set_errno(tf,E_MEM);
+        syscall_set_retval1(tf,-1);
+        return; 
+    }else{
+        syscall_set_errno(tf,E_SUCC);
+        syscall_set_retval1(tf,0);
+    }
 }
