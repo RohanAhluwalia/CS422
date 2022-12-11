@@ -23,6 +23,13 @@ unsigned int container_get_nchildren(unsigned int curid);
 unsigned int proc_create(void *elf_addr, unsigned int quota);
 void thread_yield(void);
 
+
+// Imports for Futex Implementation.
+void thread_sleep(void *chan, spinlock_t *lk);
+void thread_wakeup(void *chan);
+void spinlock_init(spinlock_t *lk);
+
+
 #endif  /* _KERN_ */
 
 #endif  /* !_KERN_TRAP_TSYSCALL_H_ */

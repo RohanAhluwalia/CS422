@@ -5,6 +5,7 @@
 #include <lib/trap.h>
 #include <lib/string.h>
 #include <lib/syscall.h>
+#include <lib/spinlock.h>
 #include <dev/console.h>
 #include <dev/intr.h>
 #include <pcpu/PCPUIntro/export.h>
@@ -13,6 +14,7 @@
 
 #define BUFLEN 1024  // from kern/dev/console.c
 static char sys_buf[NUM_IDS][PAGESIZE];
+static spinlock_t futex_spinlock;
 
 /**
  * Copies a string from user into buffer and prints it to the screen.
@@ -177,4 +179,15 @@ void sys_yield(tf_t *tf)
 {
     thread_yield();
     syscall_set_errno(tf, E_SUCC);
+}
+
+
+void futex_init() {
+    spinlock_init(&futex_spinlock);
+    KERN_DEBUG("SUCCESSFULLY INITIALIZED SPINLOCK\n");
+
+}
+
+void sys_futex(tf_t * tf) {
+    
 }

@@ -6,6 +6,7 @@
 #include <lib/kstack.h>
 #include <lib/trap.h>
 #include <vmm/MPTInit/export.h>
+#include <kern/trap/TSyscall/export.h>
 
 #include "console.h"
 #include "mboot.h"
@@ -52,6 +53,7 @@ void devinit(uintptr_t mbi_addr)
     inode_init();     // inode cache
     ide_init();
     fs_init();
+    futex_init();
     KERN_INFO("[BSP KERN] IDE disk driver initialized\n");
 }
 
