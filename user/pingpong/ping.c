@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     // int *address = alloca(sizeof(int)); 
     // printf("%p",address);
 
-    int *addr = 0xefffffd0;
+    int *addr = alloca(sizeof(int));
     *addr = 999;
 
     pid_t pong_pid;
@@ -25,7 +25,14 @@ int main(int argc, char **argv)
 
     int err = sys_memshare(addr, pong_pid);
 
-    printf("STILL MEMSHARING\n");
+    while(1){
+        int* x = addr;
+        printf("Ping Says: %d\n", *x);
+        for(int i = 0; i < 100000000; i++) {
+            
+        }
+    }
+
 
     return 0;
 }
