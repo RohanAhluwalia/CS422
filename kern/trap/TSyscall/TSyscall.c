@@ -199,7 +199,7 @@ void futex_init() {
 
 void sys_futex(tf_t * tf) {
     // Get the passed parameters.
-    KERN_DEBUG("Futex Called!\n");
+    //KERN_DEBUG("Futex Called!\n");
 
     int * uaddr = syscall_get_arg2(tf);
     int futex_op = syscall_get_arg3(tf);
@@ -218,6 +218,7 @@ void sys_futex(tf_t * tf) {
         }
     }
     else if(futex_op == 2) {
+        //KERN_DEBUG("[FUTEX] Wakeup has been called on address %p with val %d.\n", uaddr, val);
         thread_wakeup_limited(uaddr, val);
         syscall_set_errno(tf, E_SUCC);
     }
@@ -238,12 +239,11 @@ void sys_futex(tf_t * tf) {
 /* Shares a page from the current process to the target process with full permissions. Precondition is that the memory address provided must be
 written to in both the parent and the child.*/
 void sys_memshare(tf_t* tf) {
-    /* 
-    */
+
     unsigned int our_pid = get_curid();
     unsigned int address = syscall_get_arg2(tf);
     unsigned int target_pid = syscall_get_arg3(tf);
-    KERN_DEBUG("ENTERED MEMSHARE WITH %ld, %p, %ld\n", our_pid, address, target_pid);
+    //KERN_DEBUG("ENTERED MEMSHARE WITH %ld, %p, %ld\n", our_pid, address, target_pid);
     if(!(address >= VM_USERLO && address <= VM_USERHI)) {
         KERN_DEBUG("TERMINATED MEMSHARE DUE TO MEMORY OUT OF BOUNDS\n");
         syscall_set_errno(tf, E_INVAL_SEG);
@@ -260,18 +260,20 @@ void sys_memshare(tf_t* tf) {
         syscall_set_retval1(tf, NUM_IDS);
         return;
     }
-    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
+    //KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
     // Map the physical page of the second process to that of the first one.
 
     // unmap_page(target_pid, address);
     if(map_page(target_pid, address, physical_page >> 12,  PTE_W | PTE_G) == MagicNumber) 
     {
-        KERN_DEBUG("FAILED TO MEMORY MAP THE PAGE; FAILED MEMSHARE ON MEMMAP.\n");
+        syscall_set_errno(tf, E_MEM);
+        syscall_set_retval1(tf, NUM_IDS);
+        // KERN_DEBUG("FAILED TO MEMORY MAP THE PAGE; FAILED MEMSHARE ON MEMMAP.\n");
     }
 
     physical_page = get_ptbl_entry_by_va(our_pid, (unsigned int)address);
     ot_pp = get_ptbl_entry_by_va(target_pid, (unsigned int) address);
-    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
+    // KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
 
     syscall_set_errno(tf, E_SUCC);
 

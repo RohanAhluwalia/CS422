@@ -5,32 +5,32 @@
 
 #define alloca(size) __builtin_alloca(size)
 
+int NUM_PONGS = 1;
+int* PING_START_SYNC_ADDR = 0xefffffc0;
+int* PONG_START_SYNC_ADDR = 0xefffffc1;
 
 int main(int argc, char **argv)
 {
-    printf("ping started.\n");
+    printf("Ping started prepping the Futex Demo.\n");
 
-    // int *address = alloca(sizeof(int)); 
-    // printf("%p",address);
-
-    int *addr = alloca(sizeof(int));
-    *addr = 999;
-
+    // We initially create a barrier at the PROC_START_SYNC_ADDR to force all processes to wait for us to memmap relevant futex blocks.
+    *PING_START_SYNC_ADDR = 0;
+    *PONG_START_SYNC_ADDR = 0;
     pid_t pong_pid;
-
     if ((pong_pid = spawn(2, 1000)) != -1)
-        printf("pong in process %d.\n", pong_pid);
+        printf("Launching a Pong Instance! (in process %d).\n", pong_pid);
     else
         printf("Failed to launch pong.\n");
 
-    int err = sys_memshare(addr, pong_pid);
+    sys_memshare(PONG_START_SYNC_ADDR, pong_pid);
+    sys_memshare(PONG_START_SYNC_ADDR, pong_pid);
 
-    while(1){
-        int* x = addr;
-        printf("Ping Says: %p %d\n", addr, *x);
-        for(int i = 0; i < 100000000; i++) {
-            
-        }
-    }
+    printf("Waking up other processes to start the Futex Demo.\n");
+    *PONG_START_SYNC_ADDR = 1;
+
+        
+
+
+
     return 0;
 }

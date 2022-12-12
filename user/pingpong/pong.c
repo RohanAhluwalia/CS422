@@ -2,18 +2,21 @@
 #include <stdio.h>
 #include <syscall.h>
 
+
+
+int* PING_START_SYNC_ADDR = 0xefffffc0;
+int* PONG_START_SYNC_ADDR = 0xefffffc1;
+
+
 int main(int argc, char **argv)
 {
-    printf("pong started.\n");
-    int* x = 0xefffffc0;
-    *x = 1000;
+    
+    printf("Pong instance created! Waiting on coordinator to begin the demo...\n");
 
-    while(1){
-        printf("Pong Says: %p %d\n",x, *x);
-        for(int i = 0; i < 100000000; i++) {
-
-        }
+    while(*PONG_START_SYNC_ADDR != 1) {
+        // Spinlock wait for coordinator to set up memory sharing.
     }
 
+    printf("Pong instance ready to go! Beginning the futex demo.\n");
     return 0;
 }
