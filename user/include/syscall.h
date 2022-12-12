@@ -236,7 +236,7 @@ static gcc_inline int sys_memshare(unsigned int address, unsigned int target_pid
                   : "i" (T_SYSCALL),
                     "a" (SYS_memshare),
                     "b" (address),
-                    "c" (target_pid),
+                    "c" (target_pid)
                   : "cc", "memory");
 
     return errno ? -1 : 0;

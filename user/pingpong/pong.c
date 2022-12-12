@@ -5,6 +5,10 @@
 int main(int argc, char **argv)
 {
     printf("pong started.\n");
+    while(1){
+        int* x = 0xefffffd0;
+        printf("%d", *x);
+    }
 
     return 0;
 }
