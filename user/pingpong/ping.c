@@ -28,7 +28,6 @@ int main(int argc, char **argv)
     while(1){
         int* x = addr;
         printf("Ping Says: %p %d\n", addr, *x);
-        sys_memshare(addr, pong_pid);
         for(int i = 0; i < 100000000; i++) {
             
         }

@@ -263,7 +263,7 @@ void sys_memshare(tf_t* tf) {
     // Map the physical page of the second process to that of the first one.
 
     // unmap_page(target_pid, address);
-    if(map_page(target_pid, address, physical_page,  PTE_W | PTE_G) == MagicNumber) 
+    if(map_page(target_pid, address, physical_page >> 12,  PTE_W | PTE_G) == MagicNumber) 
     {
         KERN_DEBUG("FAILED TO MEMORY MAP THE PAGE; FAILED MEMSHARE ON MEMMAP.\n");
     }
