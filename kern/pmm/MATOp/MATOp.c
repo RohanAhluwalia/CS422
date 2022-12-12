@@ -31,8 +31,6 @@ unsigned int palloc()
     unsigned int palloc_free_index;
     bool first;
 
-    mem_lock();
-
     nps = get_nps();
     palloc_index = last_palloc_index;
     palloc_free_index = nps;
@@ -57,8 +55,6 @@ unsigned int palloc()
         last_palloc_index = palloc_free_index;
     }
 
-    mem_unlock();
-
     return palloc_free_index;
 }
 
@@ -72,7 +68,5 @@ unsigned int palloc()
  */
 void pfree(unsigned int pfree_index)
 {
-    mem_lock();
     at_set_allocated(pfree_index, 0);
-    mem_unlock();
 }

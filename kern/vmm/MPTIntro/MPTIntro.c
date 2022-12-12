@@ -10,8 +10,6 @@
 
 #define ADDR_MASK(x) ((unsigned int) x & 0xfffff000)
 
-static spinlock_t pt_lk;
-
 /**
  * Page directory pool for NUM_IDS processes.
  * mCertiKOS maintains one page structure for each process.

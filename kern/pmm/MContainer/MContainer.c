@@ -128,31 +128,21 @@ unsigned int container_split(unsigned int id, unsigned int quota)
  */
 unsigned int container_alloc(unsigned int id)
 {
-    unsigned int page_index = 0;
-
-    spinlock_acquire(&container_lks[id]);
-
     if (CONTAINER[id].usage + 1 <= CONTAINER[id].quota) {
         CONTAINER[id].usage++;
-        page_index = palloc();
+        return palloc();
+    } else {
+        return 0;
     }
-
-    spinlock_release(&container_lks[id]);
-
-    return page_index;
 }
 
 // Frees the physical page and reduces the usage by 1.
 void container_free(unsigned int id, unsigned int page_index)
 {
-    spinlock_acquire(&container_lks[id]);
-
     if (at_is_allocated(page_index)) {
         pfree(page_index);
         if (CONTAINER[id].usage > 0) {
             CONTAINER[id].usage--;
         }
     }
-
-    spinlock_release(&container_lks[id]);
 }
