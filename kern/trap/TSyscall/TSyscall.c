@@ -252,20 +252,26 @@ void sys_memshare(tf_t* tf) {
 
     // Now we need to get the physical page we're using for the provided address.
     unsigned int physical_page = get_ptbl_entry_by_va(our_pid, (unsigned int)address);
+    unsigned int ot_pp = get_ptbl_entry_by_va(target_pid, (unsigned int) address);
     if(physical_page == 0) {
         KERN_DEBUG("TERMINATED MEMSHARE DUE TO INVALID PHYSICAL PAGE");
         syscall_set_errno(tf, E_MEM);
         syscall_set_retval1(tf, NUM_IDS);
         return;
     }
-    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p)\n", physical_page);
+    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
     // Map the physical page of the second process to that of the first one.
 
     // unmap_page(target_pid, address);
-    if(map_page(target_pid, address, physical_page, PTE_P & PTE_W) == MagicNumber) 
+    if(map_page(target_pid, address, physical_page,  PTE_W | PTE_G) == MagicNumber) 
     {
         KERN_DEBUG("FAILED TO MEMORY MAP THE PAGE; FAILED MEMSHARE ON MEMMAP.\n");
     }
+
+    physical_page = get_ptbl_entry_by_va(our_pid, (unsigned int)address);
+    ot_pp = get_ptbl_entry_by_va(target_pid, (unsigned int) address);
+    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE (%p) (%p)\n", physical_page, ot_pp);
+
     syscall_set_errno(tf, E_SUCC);
 
 }
