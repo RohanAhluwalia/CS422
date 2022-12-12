@@ -16,11 +16,14 @@ int main(int argc, char **argv)
     int *addr = 0xefffffd0;
     *addr = 999;
 
-    pid_t child = spawn(2, 1000);
+    pid_t pong_pid;
 
-    printf("child started.\n");
+    if ((pong_pid = spawn(2, 1000)) != -1)
+        printf("pong in process %d.\n", pong_pid);
+    else
+        printf("Failed to launch pong.\n");
 
-    // int err = sys_memshare(addr, child);
+    int err = sys_memshare(addr, pong_pid);
 
     return 0;
 }

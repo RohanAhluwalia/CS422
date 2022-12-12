@@ -7,7 +7,12 @@ int main(int argc, char **argv)
 {
     printf("idle\n");
     
-    pid_t ping = spawn(1,1000);
+    pid_t ping_pid, pong_pid;
+
+    if ((ping_pid = spawn(1, 2000)) != -1)
+        printf("ping in process %d.\n", ping_pid);
+    else
+        printf("Failed to launch ping.\n");
 
 // #ifdef TEST
 //     pid_t fstest_pid;

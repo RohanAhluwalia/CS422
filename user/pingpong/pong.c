@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     printf("pong started.\n");
     while(1){
         int* x = 0xefffffd0;
-        printf("%d", *x);
+        printf("%d\n", *x);
     }
 
     return 0;
