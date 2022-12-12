@@ -64,7 +64,8 @@ void pgflt_handler(void)
         // error for writing to a read-only page
         pte_entry = get_ptbl_entry_by_va(cur_pid, fault_va);
         if (pte_entry & PTE_COW) {
-            copy_on_write(cur_pid, fault_va);
+            // handling copy-on-write
+            map_decow(cur_pid, fault_va);
             return;
         } else {
             KERN_PANIC("Writing to read-only page: va = %p\n", fault_va);
@@ -93,18 +94,11 @@ void pgflt_handler(void)
  */
 void exception_handler(void)
 {
-    // TODO
-
-
-    // Get the exception OPcode.
-    unsigned int exception_number = uctx_pool[get_curid()].trapno;
-    //dprintf("Exception Handling %ld %ld\n", exception_number, get_curid());
-    
-    // Custom handle page fault; handle others default.
-    if(exception_number == T_PGFLT) {
+    switch (uctx_pool[get_curid()].trapno) {
+    case T_PGFLT:
         pgflt_handler();
-    }
-    else {
+        break;
+    default:
         default_exception_handler();
     }
 }
@@ -132,15 +126,14 @@ static int default_intr_handler(void)
  */
 void interrupt_handler(void)
 {
-    // TODO
-    unsigned int interrupt_number = uctx_pool[get_curid()].trapno;
-    if(interrupt_number == T_IRQ0 + IRQ_TIMER) {
+    switch (uctx_pool[get_curid()].trapno) {
+    case IRQ_TIMER:
         timer_intr_handler();
-    }
-    else if(interrupt_number == T_IRQ0 + IRQ_SPURIOUS) {
+        break;
+    case IRQ_SPURIOUS:
         spurious_intr_handler();
-    }
-    else {
+        break;
+    default:
         default_intr_handler();
     }
 }

@@ -17,24 +17,15 @@ extern char STACK_LOC[NUM_IDS][PAGESIZE] gcc_aligned(PAGESIZE);
  */
 unsigned int kctx_new(void *entry, unsigned int id, unsigned int quota)
 {
-    // Check whether enough resources are available.
-    if(!container_can_consume(id, quota)) {
-        return NUM_IDS;
+    unsigned int pid = NUM_IDS;
+
+    if (container_can_consume(id, quota)) {
+        pid = alloc_mem_quota(id, quota);
+        if (pid != NUM_IDS) {
+            kctx_set_esp(pid, &STACK_LOC[pid][PAGESIZE]);
+            kctx_set_eip(pid, entry);
+        }
     }
-    
-    // Allocate resources
-    unsigned int child = alloc_mem_quota(id, quota);
-    if(child == NUM_IDS) {
-        return NUM_IDS;
-    }
-    
 
-    // Set eip and esp. 
-    kctx_set_eip(child, entry);
-
-    // QUESTION: Is the ESP top equal to PAGESIZE - 1 or Zero? 
-    kctx_set_esp(child,  STACK_LOC[id] + sizeof(char)*(PAGESIZE-1));
-
-    
-    return child;
+    return pid;
 }

@@ -17,21 +17,26 @@ void thread_init(unsigned int mbi_addr)
  */
 unsigned int thread_spawn(void *entry, unsigned int id, unsigned int quota)
 {
-    // Allocate the new child.
-    unsigned int new_chid = kctx_new(entry, id, quota);
-    
-    // Check that we're not out of memory.
-    if(new_chid == NUM_IDS) {
-        return NUM_IDS;
+    unsigned int pid = kctx_new(entry, id, quota);
+    if (pid != NUM_IDS) {
+        tcb_set_state(pid, TSTATE_READY);
+        tqueue_enqueue(NUM_IDS, pid);
     }
 
-    // Set state to ready
-    tcb_set_state(new_chid, TSTATE_READY);
+    return pid;
+}
 
-    // Push to ready queue. This queue should be at NUM_IDS.
-    tqueue_enqueue(NUM_IDS, new_chid);
+unsigned int thread_fork(void *entry, unsigned int id)
+{
+    unsigned int quota = (container_get_quota(id) - container_get_usage(id)) / 2;
+    unsigned int pid = kctx_new(entry, id, quota);
+    if (pid != NUM_IDS) {
+        map_cow(id, pid);
+        tcb_set_state(pid, TSTATE_READY);
+        tqueue_enqueue(NUM_IDS, pid);
+    }
 
-    return new_chid;
+    return pid;
 }
 
 /**
@@ -45,22 +50,17 @@ unsigned int thread_spawn(void *entry, unsigned int id, unsigned int quota)
  */
 void thread_yield(void)
 {
+    unsigned int new_cur_pid;
+    unsigned int old_cur_pid = get_curid();
 
-    // Get the current thread id and next thread id.
-    unsigned int curr = get_curid();
-    unsigned int next = tqueue_dequeue(NUM_IDS);
+    tcb_set_state(old_cur_pid, TSTATE_READY);
+    tqueue_enqueue(NUM_IDS, old_cur_pid);
 
-    // If there's nothing on the ready queue, we don't need to perform a switch.
-    if(next == NUM_IDS) {
-        return;
+    new_cur_pid = tqueue_dequeue(NUM_IDS);
+    tcb_set_state(new_cur_pid, TSTATE_RUN);
+    set_curid(new_cur_pid);
+
+    if (old_cur_pid != new_cur_pid) {
+        kctx_switch(old_cur_pid, new_cur_pid);
     }
-
-    // Set current thread state to ready and move to back of queue.
-    tcb_set_state(curr, TSTATE_READY);
-    tqueue_enqueue(NUM_IDS, curr);
-
-    // Set state of next as running. Set current thread id and switch.
-    tcb_set_state(next, TSTATE_RUN);
-    set_curid(next);
-    kctx_switch(curr, next);
 }

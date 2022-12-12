@@ -77,33 +77,37 @@ extern uint8_t _binary___obj_user_fork_test_fork_test_start[];
  */
 void sys_spawn(void)
 {
-    // Retrieve arguments from current process.
     unsigned int elf_id = syscall_get_arg2();
     unsigned int quota = syscall_get_arg3();
+    void *elf_addr;
+    unsigned int child;
 
-
-    // Check that the elf_id is within bounds of those implemented. If not, error and return.
-    if(elf_id < 1 || elf_id > 4) {
+    switch (elf_id) {
+    case 1:
+        elf_addr = _binary___obj_user_pingpong_ping_start;
+        break;
+    case 2:
+        elf_addr = _binary___obj_user_pingpong_pong_start;
+        break;
+    case 3:
+        elf_addr = _binary___obj_user_pingpong_ding_start;
+        break;
+    case 4:
+        elf_addr = _binary___obj_user_fork_test_fork_test_start;
+        break;
+    default:
         syscall_set_errno(E_INVAL_PID);
         syscall_set_retval1(NUM_IDS);
         return;
     }
 
-    // Attempt to allocate a new process for this id. Create a map from index to id.
-    uint8_t* id_to_addr_map[4] = {_binary___obj_user_pingpong_ping_start, _binary___obj_user_pingpong_pong_start, _binary___obj_user_pingpong_ding_start, _binary___obj_user_fork_test_fork_test_start};
-
-    unsigned int new_proc = proc_create(id_to_addr_map[elf_id-1], quota);
-
-    // Check if failure on allocation. If not, set success.
-    if(new_proc == NUM_IDS) {
-        syscall_set_errno(E_INVAL_PID);
-        syscall_set_retval1(NUM_IDS);
-    }
-    else {
+    child = proc_create(elf_addr, quota);
+    if (child != NUM_IDS) {
         syscall_set_errno(E_SUCC);
-        syscall_set_retval1(new_proc);
+    } else {
+        syscall_set_errno(E_INVAL_PID);
     }
-
+    syscall_set_retval1(child);
 }
 
 /**
@@ -114,21 +118,18 @@ void sys_spawn(void)
  */
 void sys_yield(void)
 {
-    syscall_set_errno(E_SUCC);
     thread_yield();
-
+    syscall_set_errno(E_SUCC);
 }
 
 // Your implementation of fork
 void sys_fork()
 {
-    unsigned int child_id = proc_fork();
-    if (child_id < NUM_IDS){
+    unsigned int child = proc_fork();
+    if (child != NUM_IDS) {
         syscall_set_errno(E_SUCC);
-        syscall_set_retval1(child_id);
-    }
-    else{
+    } else {
         syscall_set_errno(E_INVAL_PID);
-        syscall_set_retval1((unsigned int)-1);
     }
+    syscall_set_retval1(child);
 }
