@@ -221,7 +221,7 @@ void sys_futex(tf_t * tf) {
         thread_wakeup_limited(uaddr, val);
         syscall_set_errno(tf, E_SUCC);
     }
-    else if(futex_op == 4) {
+    else if(futex_op == 3) {
         if(*uaddr == val) {
             thread_sleep(uaddr, &futex_spinlock);
             thread_requeue_limited(uaddr, val2, new_uaddr);
@@ -234,6 +234,7 @@ void sys_futex(tf_t * tf) {
     }
     spinlock_release(&futex_spinlock);
 }
+
 /* Shares a page from the current process to the target process with full permissions. Precondition is that the memory address provided must be
 written to in both the parent and the child.*/
 void sys_memshare(tf_t* tf) {
