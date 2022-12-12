@@ -8,11 +8,17 @@
 #include <dev/console.h>
 #include <dev/intr.h>
 #include <pcpu/PCPUIntro/export.h>
+#include <kern/thread/PThread/export.h>
+#include <kern/lib/spinlock.h>
 
+void thread_sleep(void *chan, spinlock_t *lk);
+void thread_wakeup(void *chan);
+void spinlock_init(spinlock_t *lk);
 #include "import.h"
 
 #define BUFLEN 1024  // from kern/dev/console.c
 static char sys_buf[NUM_IDS][PAGESIZE];
+static spinlock_t futex_spinlock;
 
 /**
  * Copies a string from user into buffer and prints it to the screen.
@@ -177,4 +183,48 @@ void sys_yield(tf_t *tf)
 {
     thread_yield();
     syscall_set_errno(tf, E_SUCC);
+}
+
+
+void futex_init() {
+    spinlock_init(&futex_spinlock);
+    KERN_DEBUG("SUCCESSFULLY INITIALIZED FUTEX SPINLOCK\n");
+
+}
+
+void sys_futex(tf_t * tf) {
+    // Get the passed parameters.
+    KERN_DEBUG("Futex Called!\n");
+
+    int * uaddr = syscall_get_arg2(tf);
+    int futex_op = syscall_get_arg3(tf);
+    int val = syscall_get_arg4(tf);
+    int val2 = syscall_get_arg5(tf);
+    int* new_uaddr = syscall_get_arg6(tf);
+
+    spinlock_acquire(&futex_spinlock);
+
+    /* Wait Operation */
+    if(futex_op == 1) {
+        // If the address uses the expected value, we wait on it.
+        if(*((unsigned int*)uaddr) == val) {
+            thread_sleep(uaddr, &futex_spinlock);
+        }
+    }
+    else if(futex_op == 2) {
+        thread_wakeup_limited(uaddr, val);
+    }
+    else if(futex_op == 4) {
+        if(*((unsigned int*)uaddr) == val) {
+            thread_sleep(uaddr, &futex_spinlock);
+            thread_requeue_limited(uaddr, val2, new_uaddr);
+        }
+        else {
+            syscall_set_errno(tf, E_AGAIN);
+            syscall_set_retval1(tf, NUM_IDS);
+        }
+    }
+    spinlock_release(&futex_spinlock);
+
+
 }

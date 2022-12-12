@@ -23,6 +23,7 @@ unsigned int container_get_nchildren(unsigned int curid);
 unsigned int proc_create(void *elf_addr, unsigned int quota);
 void thread_yield(void);
 
+
 #endif  /* _KERN_ */
 
 #endif  /* !_KERN_TRAP_TSYSCALL_H_ */

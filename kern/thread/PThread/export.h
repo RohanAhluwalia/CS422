@@ -12,6 +12,8 @@ void thread_yield(void);
 void sched_update(void);
 void thread_sleep(void *chan, spinlock_t *lk);
 void thread_wakeup(void *chan);
+void thread_wakeup_limited(void* chan, unsigned int max_threads);
+void thread_requeue_limited(void* chan, unsigned int number_of_threads_to_wake, void* new_chan);
 
 #endif  /* _KERN_ */
 

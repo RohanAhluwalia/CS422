@@ -209,4 +209,22 @@ static gcc_inline int sys_chdir(char *path)
     return errno ? -1 : 0;
 }
 
+static gcc_inline int sys_futex(int* uaddr, int futex_op, int val, int val2, int* uaddr2)
+{
+    int errno, ret;
+
+    asm volatile ("int %2"
+                  : "=a" (errno), "=b" (ret)
+                  : "i" (T_SYSCALL),
+                    "a" (SYS_futex),
+                    "b" (uaddr),
+                    "c" (futex_op),
+                    "d" (val),
+                    "S" (val2),
+                    "D" (uaddr2)
+                  : "cc", "memory");
+
+    return errno ? -1 : 0;
+}
+
 #endif  /* !_USER_SYSCALL_H_ */

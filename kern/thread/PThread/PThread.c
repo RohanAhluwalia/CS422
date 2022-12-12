@@ -153,3 +153,36 @@ void thread_wakeup(void *chan)
 
     spinlock_release(&sched_lk);
 }
+
+void thread_wakeup_limited(void* chan, unsigned int number_of_threads) {
+    unsigned int pid;
+    unsigned int thread_counter = 0;
+    spinlock_acquire(&sched_lk);
+    for (pid = 0; pid < NUM_IDS && thread_counter < number_of_threads; pid++) {
+        if (chan == tcb_get_chan(pid)) {
+            thread_counter++;
+            tcb_set_state(pid, TSTATE_READY);
+            tqueue_enqueue(NUM_IDS, pid);
+        }
+    }
+    spinlock_release(&sched_lk);
+}
+
+void thread_requeue_limited(void* chan, unsigned int number_of_threads_to_wake, void* new_chan) {
+    unsigned int pid;
+    unsigned int thread_counter = 0;
+    spinlock_acquire(&sched_lk);
+    for (pid = 0; pid < NUM_IDS; pid++) {
+        if (chan == tcb_get_chan(pid)) {
+            if(thread_counter < number_of_threads_to_wake) {
+                tcb_set_state(pid, TSTATE_READY);
+                tqueue_enqueue(NUM_IDS, pid);
+            }
+            else {
+                tcb_set_chan(pid, new_chan);
+            }
+            thread_counter++;
+        }
+    }
+    spinlock_release(&sched_lk);
+}
