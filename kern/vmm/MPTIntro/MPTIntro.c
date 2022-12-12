@@ -111,8 +111,6 @@ void rmv_ptbl_entry(unsigned int proc_index, unsigned int pde_index,
 {
     unsigned int *pt = (unsigned int *) ADDR_MASK(PDirPool[proc_index][pde_index]);
     pt[pte_index] = 0;
-<<<<<<< HEAD
-=======
 }
 
 // Copy PTE entry assuming page directory exists.
@@ -153,5 +151,4 @@ void copy_pdir_entry(unsigned int from, unsigned int to, unsigned int pde_index)
             copy_ptbl_entry(from, to, pde_index, pte);
         }
     }
->>>>>>> release/lab3-sol
 }
