@@ -242,8 +242,9 @@ void sys_memshare(tf_t* tf) {
     unsigned int our_pid = get_curid();
     unsigned int address = syscall_get_arg2(tf);
     unsigned int target_pid = syscall_get_arg3(tf);
-
+    KERN_DEBUG("ENTERED MEMSHARE WITH %ld, %s, %ld\n", our_pid, address, target_pid);
     if(!(address >= VM_USERLO && address <= VM_USERHI)) {
+        KERN_DEBUG("TERMINATED MEMSHARE DUE TO MEMORY OUT OF BOUNDS\n");
         syscall_set_errno(tf, E_INVAL_SEG);
         syscall_set_retval1(tf, NUM_IDS);
         return;
@@ -252,11 +253,12 @@ void sys_memshare(tf_t* tf) {
     // Now we need to get the physical page we're using for the provided address.
     unsigned int physical_page = get_ptbl_entry_by_va(our_pid, (unsigned int)address);
     if(physical_page == 0) {
+        KERN_DEBUG("TERMINATED MEMSHARE DUE TO INVALID PHYSICAL PAGE");
         syscall_set_errno(tf, E_MEM);
         syscall_set_retval1(tf, NUM_IDS);
         return;
     }
-
+    KERN_DEBUG("GOT TO MAP_PAGE SECTION OF MEMSHARE\n");
     // Map the physical page of the second process to that of the first one.
     map_page(target_pid, address, physical_page, PTE_P & PTE_W);
     syscall_set_errno(tf, E_SUCC);

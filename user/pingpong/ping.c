@@ -25,5 +25,7 @@ int main(int argc, char **argv)
 
     int err = sys_memshare(addr, pong_pid);
 
+    printf("STILL MEMSHARING\n");
+
     return 0;
 }

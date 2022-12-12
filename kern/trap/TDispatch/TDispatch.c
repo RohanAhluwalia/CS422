@@ -97,6 +97,9 @@ void syscall_dispatch(tf_t *tf)
     case SYS_futex:
         sys_futex(tf);
         break;
+    case SYS_memshare:
+        sys_memshare(tf);
+        break;
     default:
         syscall_set_errno(tf, E_INVAL_CALLNR);
     }
