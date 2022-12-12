@@ -9,12 +9,17 @@
 #include <dev/intr.h>
 #include <pcpu/PCPUIntro/export.h>
 #include <kern/thread/PThread/export.h>
+#include <kern/vmm/MPTOp/export.h>
+#include <kern/vmm/MPTKern/export.h>
 #include <kern/lib/spinlock.h>
+#include "import.h"
+
+#define VM_USERLO     0x40000000
+#define VM_USERHI     0xF0000000
 
 void thread_sleep(void *chan, spinlock_t *lk);
 void thread_wakeup(void *chan);
 void spinlock_init(spinlock_t *lk);
-#include "import.h"
 
 #define BUFLEN 1024  // from kern/dev/console.c
 static char sys_buf[NUM_IDS][PAGESIZE];
@@ -207,17 +212,20 @@ void sys_futex(tf_t * tf) {
     /* Wait Operation */
     if(futex_op == 1) {
         // If the address uses the expected value, we wait on it.
-        if(*((unsigned int*)uaddr) == val) {
+        if(*uaddr == val) {
             thread_sleep(uaddr, &futex_spinlock);
+            syscall_set_errno(tf, E_SUCC);
         }
     }
     else if(futex_op == 2) {
         thread_wakeup_limited(uaddr, val);
+        syscall_set_errno(tf, E_SUCC);
     }
     else if(futex_op == 4) {
-        if(*((unsigned int*)uaddr) == val) {
+        if(*uaddr == val) {
             thread_sleep(uaddr, &futex_spinlock);
             thread_requeue_limited(uaddr, val2, new_uaddr);
+            syscall_set_errno(tf, E_SUCC);
         }
         else {
             syscall_set_errno(tf, E_AGAIN);
@@ -225,6 +233,32 @@ void sys_futex(tf_t * tf) {
         }
     }
     spinlock_release(&futex_spinlock);
+}
+/* Shares a page from the current process to the target process with full permissions. Precondition is that the memory address provided must be
+written to in both the parent and the child.*/
+void sys_memshare(tf_t* tf) {
+    /* 
+    */
+    unsigned int our_pid = get_curid();
+    unsigned int address = syscall_get_arg2(tf);
+    unsigned int target_pid = syscall_get_arg3(tf);
 
+    if(!(address >= VM_USERLO && address <= VM_USERHI)) {
+        syscall_set_errno(tf, E_INVAL_SEG);
+        syscall_set_retval1(tf, NUM_IDS);
+        return;
+    }
+
+    // Now we need to get the physical page we're using for the provided address.
+    unsigned int physical_page = get_ptbl_entry_by_va(our_pid, (unsigned int)address);
+    if(physical_page == 0) {
+        syscall_set_errno(tf, E_MEM);
+        syscall_set_retval1(tf, NUM_IDS);
+        return;
+    }
+
+    // Map the physical page of the second process to that of the first one.
+    map_page(target_pid, address, physical_page, PTE_P & PTE_W);
+    syscall_set_errno(tf, E_SUCC);
 
 }
