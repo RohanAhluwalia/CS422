@@ -3,7 +3,7 @@ Who Worked: Rohan Ahluwalia, Edward Frazer
 Brief Description of Implementation
 
 Summary: We worked on Project 11: Advanced User-Level Synchronization. We implemented two system calls to facilitate the creation
-of user level synchronization objects. On the user level, we implemented semaphores, bounding blocking queues, and ___.
+of user level synchronization objects. On the user level, we implemented semaphores, mutex locks, and read-write locks.
 
 1. System Calls -- All are implemented in TSyscall.c with some auxillary functionality scattered throughout the various syscall layers.
    Specifically, we implement many of the queuing operations in PThread.c
@@ -13,4 +13,13 @@ of user level synchronization objects. On the user level, we implemented semapho
     b. memshare() -- This system call allows the calling thread to share a page with a target thread with read & write permissions. It
     allows user processes to operate in shared memory space and thus to make use of futexes directly.
 
-2. User Level Implementation
+2. User Level Implementation - These are implemented in the /lib and /include sections of the user-side.
+    Specifically, we implement three higher-level synchronization objects: Semaphore, Mutex, and RWLock. In each of these we implement futex in what we believe the correct way given our synchronization object.
+
+    As a preface to our implementations, to ensure that our implementions are thread-safe, we utilized two main atomic functions: xchg() and cmpxchg(). Both of these provide us with a structure to ensure that our implementations valid.
+
+    a. Mutex() -- This object has two main functions: Lock and Unlock. In lock, we first check if the current lock is being used, if not, then we continue to call FUTEX_WAIT, until this lock is contested or avalible. In the unlock, section, we change the value of the lock and call FUTEX_WAKE, to show that this lock is now avaliable.
+
+    b. RWLock() -- This implementation is similar to the mutex(), but we allow for reads of the values protected by these locks at any point in time. The main difference in a read lock, is that we don't call FUTEX_WAKE when this lock is avaliable, but it will always be able to be accessed.
+
+    c. Semaphore() -- We also implemented semaphores. In this, we've implemetned three functions: sema_wait, sema_trywait, and sema_post. These three functions mimick the implementation of a semaphore; the P() and V() functions. In the wait function, we first attempt to see if this sempahore is in use, but if not then we continue. Then, we add to our watiers, and call our system call as long as sema_trywait is false. When we are finished, we then lower our count. In our post function, we find our new post value, and when our val is equal to our lock, then we call our system call. We first check if the semaphore is locked and there are no waiters, but if this is true, then we call FUTEX_WAIT.
