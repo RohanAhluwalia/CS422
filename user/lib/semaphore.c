@@ -54,15 +54,15 @@ void sema_wait(semaphore_t *lk, semaphore_t *waiters){
     xchg(waiters, (*waiters)-1);
 }
 
-void sema_post(semaphore_t *lk, semaphore_t *watiers, int n){
-    int new, waiters, val = *lk;
+void sema_post(semaphore_t *lk, semaphore_t *waiters, int n){
+    int new, current_waiters, val = *lk;
 
     do {
-        waiters = *waiters;
+        current_waiters = *waiters;
         new = (int) ((unsigned int)val + n + (val < LOCKED));
     } while(!cmpxchg(lk, &val, new));
 
-    if(val < LOCKED || watiers){
+    if(val < LOCKED || current_waiters){
         sys_futex((int*)lk, FUTEX_WAIT, n, 0, NULL);
     }
 }
