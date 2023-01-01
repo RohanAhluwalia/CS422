@@ -2,12 +2,14 @@
 #include <syscall.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <mutex.h>
 
 #define alloca(size) __builtin_alloca(size)
 
 int NUM_PONGS = 1;
 int* PING_START_SYNC_ADDR = 0xefffffc0;
 int* PONG_START_SYNC_ADDR = 0xefffffc1;
+mutex_t *LOCK = 0xefffffc2;
 
 int main(int argc, char **argv)
 {
@@ -26,10 +28,14 @@ int main(int argc, char **argv)
     sys_memshare(PONG_START_SYNC_ADDR, pong_pid);
 
     printf("Waking up other processes to start the Futex Demo.\n");
+
     *PONG_START_SYNC_ADDR = 1;
 
-        
+    // MUTEX TEST
 
+    int64_t v = 0;
+    mutex_init(LOCK);
+    printf("Lock value: %p\n", *LOCK);
 
 
     return 0;

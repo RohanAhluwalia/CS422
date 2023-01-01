@@ -25,14 +25,14 @@ void mutex_init(mutex_t *lk){
 }
 
 void mutex_lock(mutex_t *lk){
-    int c = cmpxchg(lk, 0 , 1);
+    int c = cmpxchg(&lk, 0 , 1);
     
     if (c != 0){
         do {
             if (c == 2 || cmpxchg(&lk,1,2) != 0){
                 sys_futex((int*)lk, FUTEX_WAIT, 2, 0, NULL);
             }
-        } while((c == cmpxchg(lk, 0 ,2)) != 0);
+        } while((c == cmpxchg(&lk, 0 ,2)) != 0);
     }
 }
 
