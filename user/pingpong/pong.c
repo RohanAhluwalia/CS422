@@ -4,22 +4,27 @@
 #include <mutex.h>
 
 
-int* PING_START_SYNC_ADDR = 0xefffffc0;
-int* PONG_START_SYNC_ADDR = 0xefffffc1;
+int* MEMSHARE_SYNC_ADDR = 0xefffffc3;
 mutex_t *LOCK = 0xefffffc2;
 
 
 
 int main(int argc, char **argv)
 {
-    
-    printf("Pong instance created! Waiting on coordinator to begin the demo...\n");
+    startup_memmapped_process(MEMSHARE_SYNC_ADDR, 0);
+    printf("[Pong] Pong instance created! Alerting ping by setting shared memory to 1...\n");
+    *MEMSHARE_SYNC_ADDR = 1;
+    sys_yield();
 
-    while(*PONG_START_SYNC_ADDR != 1) {
-        // Spinlock wait for coordinator to set up memory sharing.
+    // Wait for us to be 0 again
+    conditioned_wait(MEMSHARE_SYNC_ADDR, 0);
+    printf("[Pong] Value at MEMSHARE_SYNC_ADDR: %d\n", *MEMSHARE_SYNC_ADDR);
+    printf("[Pong] Ping alerted me it completed the initial demo by setting sync addr to 0 again. Now we can start other tests!\n");
+
+    sys_yield();
+    //printf("Pong instance ready to go! Beginning the futex demo.\n");
+    while(1) {
+
     }
-
-    printf("Pong instance ready to go! Beginning the futex demo.\n");
-
     return 0;
 }
